@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Email Tracker",
+  "version": "0.1.0",
+  "description": "Tracks opens and link clicks on emails sent from Gmail.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://YOUR-SERVER.example/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "options_page": "options.html"
+}
