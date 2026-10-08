@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# End-to-end check against a running server + local CockroachDB.
-#   docker run -d --name crdb -p 26257:26257 cockroachdb/cockroach:latest start-single-node --insecure
-#   DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' HMAC_KEY=dev-key go run .
+# End-to-end check against a running server. Local: Postgres in Docker. Live: BASE=https://YOUR-SERVER.example HMAC_KEY=$(security find-generic-password -s email-tracker-hmac-key -w) ./test.sh
+#   docker run -d --name pg -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:17
+#   DATABASE_URL='postgres://postgres:dev@localhost:5432/postgres?sslmode=disable' HMAC_KEY=dev-key go run .
 #   ./test.sh
 set -euo pipefail
 KEY=${HMAC_KEY:-dev-key}
@@ -26,6 +26,10 @@ check "click redirect"    "$(curl -s -o /dev/null -w '%{redirect_url}' "$BASE/c/
 check "click forged"      "$(code "$BASE/c/$ID/nope/1")" 404
 check "click no link"     "$(code "$BASE/c/$ID/$T/9")" 404
 
-counts=$(docker exec crdb ./cockroach sql --insecure --format=csv -e \
-  "SELECT (SELECT count(*) FROM opens WHERE mail_id='$ID'), (SELECT count(*) FROM clicks WHERE mail_id='$ID'), (SELECT gmail_id FROM mails WHERE id='$ID')" | tail -1)
-check "db opens,clicks,gmail_id" "$counts" "2,2,g123"
+Q="SELECT (SELECT count(*) FROM opens WHERE mail_id='$ID'), (SELECT count(*) FROM clicks WHERE mail_id='$ID'), (SELECT gmail_id FROM mails WHERE id='$ID')"
+if [[ $BASE == http://localhost* ]]; then
+  check "db opens,clicks,gmail_id" "$(docker exec pg psql -U postgres -tA -F, -c "$Q")" "2,2,g123"
+else
+  echo "Remote DB: run this in the Supabase SQL editor, expect 2 | 2 | g123:"
+  echo "  $Q;"
+fi
