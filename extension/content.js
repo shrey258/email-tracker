@@ -3,14 +3,19 @@ const SEND = 'div[role="button"].aoO:not([data-et-ours])';
 const BODY = 'div[contenteditable="true"][g_editable="true"], div[contenteditable="true"][aria-label="Message Body"]';
 const SUBJECT = 'input[name="subjectbox"]';
 const RECIPIENT = "[email]"; // recipient chips carry the address in an `email` attribute
+const TRACKER = "YOUR-SERVER.example"; // your tracking server's host, same as BASE in background.js
+const GMAIL_SEND = 'div[role="button"].aoO[data-et]:not([data-et-ours])';
 
-// The compose window is the nearest ancestor that contains a message body.
 function composeRoot(el) {
-  for (let n = el; n; n = n.parentElement) if (n.querySelector?.(BODY)) return n;
+  let fallback;
+  for (let n = el.parentElement; n; n = n.parentElement) {
+    if (n.querySelectorAll(BODY).length > 1) break;
+    if (n.querySelector(SUBJECT)) return { root: n, partial: false };
+    if (!fallback && n.querySelector(BODY) && n.querySelector(GMAIL_SEND)) fallback = n;
+  }
+  return fallback && { root: fallback, partial: true };
 }
 
-// Put our button where Gmail's Send is. Gmail's stays in the page, hidden but working,
-// because we press it ourselves at the end (a disabled button would ignore that).
 function takeOver(gmailSend) {
   gmailSend.dataset.et = "1";
   const ours = gmailSend.cloneNode(true); // same look; cloning doesn't copy Gmail's listeners
@@ -27,12 +32,17 @@ function takeOver(gmailSend) {
   gmailSend.style.display = "none";
 }
 
-async function trackedSend(root, gmailSend) {
-  if (!root || root.dataset.etBusy) return;
+async function trackedSend(found, gmailSend) {
+  if (!found) {
+    toast("Not tracked: couldn't find this email's text. Gmail may have changed its layout.");
+    return pressGmailSend(gmailSend);
+  }
+  const { root, partial } = found;
+  if (root.dataset.etBusy) return;
   root.dataset.etBusy = "1";
   const body = root.querySelector(BODY);
   const links = [...body.querySelectorAll("a[href]")].filter(
-    (a) => /^https?:/i.test(a.href) && !a.href.includes("YOUR-SERVER.example") // skip links from quoted tracked emails
+    (a) => /^https?:/i.test(a.href) && !a.href.includes(TRACKER) // skip links from quoted tracked emails
   );
 
   // 1. Register first, while the email is still untouched.
@@ -56,6 +66,7 @@ async function trackedSend(root, gmailSend) {
     img.width = img.height = 1;
     img.alt = "";
     body.append(img);
+    if (partial) toast("Tracked, but couldn't read the subject and recipients. Gmail may have changed its layout.");
   } else {
     toast(`Not tracked: ${r.error}`);
   }
@@ -89,12 +100,15 @@ window.addEventListener(
   "keydown",
   (e) => {
     if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
-    const root = composeRoot(e.target);
-    const gmailSend = root?.querySelector('div[role="button"].aoO[data-et]');
-    if (!gmailSend) return;
+    const found = composeRoot(e.target);
+    const gmailSend = found?.root.querySelector(GMAIL_SEND);
+    if (!gmailSend) {
+      if (e.target.closest?.(BODY)) toast("Not tracked: couldn't find this email's Send button. Gmail may have changed its layout.");
+      return;
+    }
     e.preventDefault();
     e.stopImmediatePropagation();
-    trackedSend(root, gmailSend);
+    trackedSend(found, gmailSend);
   },
   true
 );
