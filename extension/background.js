@@ -1,5 +1,13 @@
-import { sign } from "./sign.js";
+// Must match sign() in server/sign.go: base64url(HMAC-SHA256(key, purpose + ":" + id)), no padding.
+async function sign(key, purpose, id) {
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey("raw", enc.encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(`${purpose}:${id}`)));
+  return btoa(String.fromCharCode(...mac)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
 
+// Your tracking server (deploy server/ first), e.g. "https://my-tracker.fly.dev". No trailing slash.
+// Also set it in manifest.json host_permissions and in TRACKER in content.js.
 const BASE = "https://YOUR-SERVER.example";
 
 // The HMAC key lives only here (chrome.storage), never in the Gmail page.
@@ -17,6 +25,19 @@ async function register({ subject, recipients, links }) {
   if (!res.ok) throw new Error(`server said ${res.status}`);
   return { id, base: BASE, trackSig: await sign(hmacKey, "track", id) };
 }
+
+// Your own Gmail tab loads the pixel straight from our server (the compose window, at send time).
+// Recipients' Gmail never does: it goes through Google's image proxy. So block the direct load.
+chrome.runtime.onInstalled.addListener(() =>
+  chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [1],
+    addRules: [{
+      id: 1,
+      action: { type: "block" },
+      condition: { urlFilter: `|${BASE}/o/`, initiatorDomains: ["mail.google.com"], resourceTypes: ["image"] },
+    }],
+  })
+);
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type !== "register") return;
