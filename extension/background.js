@@ -26,15 +26,16 @@ async function register({ subject, recipients, links }) {
   return { id, base: BASE, trackSig: await sign(hmacKey, "track", id) };
 }
 
-// Your own Gmail tab loads the pixel straight from our server (the compose window, at send time).
-// Recipients' Gmail never does: it goes through Google's image proxy. So block the direct load.
+// Block our pixel whenever your own Gmail tab loads it: directly (the compose window at send time) or
+// through Google's image proxy (viewing Sent or a thread), whose URL carries ours after "#".
+// Recipients' Gmail runs without this extension, so their opens still count.
 chrome.runtime.onInstalled.addListener(() =>
   chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: [1],
     addRules: [{
       id: 1,
       action: { type: "block" },
-      condition: { urlFilter: `|${BASE}/o/`, initiatorDomains: ["mail.google.com"], resourceTypes: ["image"] },
+      condition: { urlFilter: `${new URL(BASE).host}/o/`, initiatorDomains: ["mail.google.com"], resourceTypes: ["image"] },
     }],
   })
 );
