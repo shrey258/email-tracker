@@ -6,6 +6,10 @@ CREATE TABLE IF NOT EXISTS mails (
     gmail_id   TEXT
 );
 
+-- The Gmail account that sent it; each account only ever sees its own emails.
+ALTER TABLE mails ADD COLUMN IF NOT EXISTS sender TEXT;
+CREATE INDEX IF NOT EXISTS mails_sender ON mails (sender, sent_at);
+
 CREATE TABLE IF NOT EXISTS links (
     mail_id TEXT NOT NULL REFERENCES mails (id),
     n       INT NOT NULL,

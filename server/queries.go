@@ -9,8 +9,8 @@ import (
 
 // Every SQL statement the server runs lives in this file.
 
-func insertMail(ctx context.Context, tx pgx.Tx, id, subject string, recipients []string) error {
-	_, err := tx.Exec(ctx, `INSERT INTO mails (id, subject, recipients) VALUES ($1, $2, $3)`, id, subject, recipients)
+func insertMail(ctx context.Context, tx pgx.Tx, id, sender, subject string, recipients []string) error {
+	_, err := tx.Exec(ctx, `INSERT INTO mails (id, sender, subject, recipients) VALUES ($1, $2, $3, $4)`, id, sender, subject, recipients)
 	return err
 }
 
@@ -19,14 +19,11 @@ func insertLink(ctx context.Context, tx pgx.Tx, mailID string, n int, url string
 	return err
 }
 
-// updateGmailID reports whether a mail with that id existed.
-func updateGmailID(ctx context.Context, db *pgxpool.Pool, id, gmailID string) (bool, error) {
-	tag, err := db.Exec(ctx, `UPDATE mails SET gmail_id = $1 WHERE id = $2`, gmailID, id)
-	return tag.RowsAffected() > 0, err
-}
-
+// insertOpen skips the open if the same email was opened in the last minute.
 func insertOpen(ctx context.Context, db *pgxpool.Pool, mailID string) error {
-	_, err := db.Exec(ctx, `INSERT INTO opens (mail_id) VALUES ($1)`, mailID)
+	_, err := db.Exec(ctx, `
+INSERT INTO opens (mail_id) SELECT $1
+WHERE NOT EXISTS (SELECT 1 FROM opens WHERE mail_id = $1 AND opened_at > now() - interval '1 minute')`, mailID)
 	return err
 }
 
@@ -40,4 +37,19 @@ func linkURL(ctx context.Context, db *pgxpool.Pool, mailID string, n int) (strin
 func insertClick(ctx context.Context, db *pgxpool.Pool, mailID string, n int) error {
 	_, err := db.Exec(ctx, `INSERT INTO clicks (mail_id, n) VALUES ($1, $2)`, mailID, n)
 	return err
+}
+
+// allStats returns the sender's newest 200 emails as a JSON array, built by Postgres.
+// ponytail: fixed limit, add paging if 200 isn't enough.
+func allStats(ctx context.Context, db *pgxpool.Pool, sender string) ([]byte, error) {
+	var out []byte
+	err := db.QueryRow(ctx, `
+SELECT coalesce(json_agg(m ORDER BY m.sent_at DESC), '[]') FROM (
+  SELECT id, subject, recipients, sent_at,
+    (SELECT coalesce(json_agg(opened_at ORDER BY opened_at), '[]') FROM opens WHERE mail_id = mails.id) AS opens,
+    (SELECT coalesce(json_agg(json_build_object('n', c.n, 'url', l.url, 'at', c.clicked_at) ORDER BY c.clicked_at), '[]')
+       FROM clicks c JOIN links l USING (mail_id, n) WHERE c.mail_id = mails.id) AS clicks
+  FROM mails WHERE sender = $1 ORDER BY sent_at DESC LIMIT 200
+) m`, sender).Scan(&out)
+	return out, err
 }

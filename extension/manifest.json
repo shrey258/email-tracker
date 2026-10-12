@@ -1,16 +1,41 @@
 {
   "manifest_version": 3,
   "name": "Email Tracker",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tracks opens and link clicks on emails sent from Gmail.",
-  "permissions": ["storage", "declarativeNetRequest"],
-  "host_permissions": ["https://YOUR-SERVER.example/*"],
-  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": [
+    "storage",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "https://YOUR-SERVER.example/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
-      "matches": ["https://mail.google.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "gmail.js",
+        "toast.js",
+        "send.js",
+        "stats-line.js",
+        "content.js"
+      ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://YOUR-DASHBOARD.example/*"
+      ],
+      "js": [
+        "dashboard.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "options_page": "options.html"

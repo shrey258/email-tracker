@@ -15,7 +15,7 @@ func TestVerify(t *testing.T) {
 	if verify([]byte("other-key"), purposeTrack, "abc123", sig) {
 		t.Fatal("signature accepted under a different key")
 	}
-	if verify(key, purposeWrite, "abc123", sig) {
-		t.Fatal("track signature accepted for write")
+	if verify(key, purposeSession, "abc123", sig) {
+		t.Fatal("track signature accepted as a session")
 	}
 }

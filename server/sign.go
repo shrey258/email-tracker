@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 )
 
-// Two purposes so the signature that appears inside the email ("track")
-// can't be reused by a recipient to call the write endpoints ("write").
+// Separate purposes so the signature that appears inside the email ("track")
+// can't be reused by a recipient as a sign-in session ("session").
 const (
-	purposeTrack = "track"
-	purposeWrite = "write"
+	purposeTrack   = "track"
+	purposeSession = "session"
 )
 
 func sign(key []byte, purpose, id string) string {

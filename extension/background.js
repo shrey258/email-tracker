@@ -1,29 +1,23 @@
-// Must match sign() in server/sign.go: base64url(HMAC-SHA256(key, purpose + ":" + id)), no padding.
-async function sign(key, purpose, id) {
-  const enc = new TextEncoder();
-  const k = await crypto.subtle.importKey("raw", enc.encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(`${purpose}:${id}`)));
-  return btoa(String.fromCharCode(...mac)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
-}
+// The extension's background: registers emails, fetches stats, stores sign-ins, and blocks
+// your own Gmail tabs from loading the pixel. Server calls go through api.js.
+import { BASE, api, setSession } from "./api.js";
 
-// Your tracking server (deploy server/ first), e.g. "https://my-tracker.fly.dev". No trailing slash.
-// Also set it in manifest.json host_permissions and in TRACKER in content.js.
-const BASE = "https://YOUR-SERVER.example";
-
-// The HMAC key lives only here (chrome.storage), never in the Gmail page.
-async function register({ subject, recipients, links }) {
-  const { hmacKey } = await chrome.storage.local.get("hmacKey");
-  if (!hmacKey) throw new Error("no HMAC key set (open the extension's options)");
-
+async function register({ account, subject, recipients, links }) {
   const id = crypto.randomUUID();
-  const res = await fetch(`${BASE}/mails`, {
+  const { track_sig } = await api(account, "/mails", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, sig: await sign(hmacKey, "write", id), subject, recipients, links }),
-    signal: AbortSignal.timeout(5000), // a cold Fly machine or paused DB can't hold the email hostage
+    body: JSON.stringify({ id, subject, recipients, links }),
   });
-  if (!res.ok) throw new Error(`server said ${res.status}`);
-  return { id, base: BASE, trackSig: await sign(hmacKey, "track", id) };
+  return { id, base: BASE, trackSig: track_sig };
+}
+
+// ponytail: refetches the account's stats at most every 30s; add a per-email endpoint if this gets slow.
+const cache = {};
+async function stats({ account, id }) {
+  if (!(Date.now() - cache[account]?.at < 30000))
+    cache[account] = { at: Date.now(), byId: Object.fromEntries((await api(account, "/stats")).map((m) => [m.id, m])) };
+  return { mail: cache[account].byId[id] ?? null };
 }
 
 // Block our pixel whenever your own Gmail tab loads it: directly (the compose window at send time) or
@@ -40,9 +34,17 @@ chrome.runtime.onInstalled.addListener(() =>
   })
 );
 
+const handlers = {
+  register,
+  stats,
+  // A session is "<expiry>.<email>.<signature>", so it says which account it's for.
+  session: ({ session }) => setSession(session.slice(session.indexOf(".") + 1, session.lastIndexOf(".")), session),
+};
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-  if (msg.type !== "register") return;
-  register(msg)
+  const h = handlers[msg.type];
+  if (!h) return;
+  h(msg)
     .then((r) => reply({ ok: true, ...r }))
     .catch((e) => reply({ ok: false, error: e.message }));
   return true; // reply is async
