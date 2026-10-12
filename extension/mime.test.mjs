@@ -1,4 +1,3 @@
-// node extension/mime.test.mjs — checks markOwnCopy on a Gmail-style email.
 import assert from "node:assert";
 import { markOwnCopy } from "./mime.js";
 import { BASE } from "./api.js";

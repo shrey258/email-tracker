@@ -10,18 +10,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// The extension uses a random UUID; anything else (like "/") would break the tracking URLs.
 var validID = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
 
 type registerReq struct {
 	ID         string   `json:"id"`
 	Subject    string   `json:"subject"`
 	Recipients []string `json:"recipients"`
-	Links      []string `json:"links"` // link n is Links[n-1]
+	Links      []string `json:"links"`
 }
 
-// register stores an email under the signed-in account and its links before the email is sent, and returns the signature
-// for its tracking URLs, so the extension never needs the key.
 func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	sender, ok := s.signedIn(w, r)
 	if !ok {
@@ -38,14 +35,13 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, l := range req.Links {
-		// Only http(s), so a stored link can't become a javascript: or file: redirect.
+
 		if u, err := url.Parse(l); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 			http.Error(w, "bad link: "+l, http.StatusBadRequest)
 			return
 		}
 	}
 
-	// One transaction: either the email and all its links are saved, or nothing is.
 	err := pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
 		if err := insertMail(r.Context(), tx, req.ID, sender, req.Subject, req.Recipients); err != nil {
 			return err

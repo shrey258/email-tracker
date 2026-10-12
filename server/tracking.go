@@ -11,25 +11,24 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Your own copy of a sent email (in Sent) has "?me" on its tracking URLs (see extension/own-copy.js),
-// so you viewing it on any device, or clicking its links, isn't counted.
-func isOwnCopy(r *http.Request) bool { return r.URL.Query().Has("me") }
+func isOwnCopy(r *http.Request) bool {
+	return r.URL.Query().Has("me")
+}
 
-// Smallest valid transparent 1x1 GIF.
+func isGmailScan(r *http.Request) bool {
+	return strings.Contains(r.UserAgent(), "Edge/12.246")
+}
+
 var pixel, _ = base64.StdEncoding.DecodeString("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
 
-// open logs an open and always returns the pixel, so a broken image never shows in the email.
 func (s *server) open(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// Gmail scans new mail for safety ~14s after delivery, fetching images with this old Edge user agent.
-	// Real views come through Google's image proxy ("GoogleImageProxy"), so skip only the scanner.
-	if strings.Contains(r.UserAgent(), "Edge/12.246") {
+	switch {
+	case isGmailScan(r):
 		log.Println("open: skipped Gmail's delivery scan")
-	} else if isOwnCopy(r) {
+	case isOwnCopy(r):
 		log.Println("open: skipped, your own copy")
-	} else if verify(s.key, purposeTrack, id, r.PathValue("sig")) {
-		// Fails only if the id was never registered; nothing useful to tell the caller.
-		// A view within a minute of the last one isn't counted, so reloading the image can't inflate opens.
+	case verify(s.key, purposeTrack, id, r.PathValue("sig")):
 		if err := insertOpen(r.Context(), s.db, id); err != nil {
 			log.Println("open:", err)
 		}
@@ -39,7 +38,6 @@ func (s *server) open(w http.ResponseWriter, r *http.Request) {
 	w.Write(pixel)
 }
 
-// click logs a click and redirects to the URL stored at registration, never to one taken from the request.
 func (s *server) click(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	n, err := strconv.Atoi(r.PathValue("n"))
@@ -57,7 +55,6 @@ func (s *server) click(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
-	// Redirect even if logging fails: the recipient reaching the link matters more than our stat.
 	if isOwnCopy(r) {
 		log.Println("click: skipped, your own copy")
 	} else if err := insertClick(r.Context(), s.db, id, n); err != nil {

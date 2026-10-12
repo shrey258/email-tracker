@@ -1,4 +1,3 @@
-// Calls to the Gmail API as one of your accounts.
 import { gmailToken } from "./google-auth.js";
 
 export async function gmail(account, path, body) {

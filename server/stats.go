@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-// stats returns the signed-in account's emails with their opens and clicks.
 func (s *server) stats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", s.origin)
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization")

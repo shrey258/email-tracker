@@ -1,9 +1,6 @@
-// Gmail permission for one of your accounts, through Google's sign-in page.
-// The first time needs a click ("Connect Gmail" in the options); after that, new hour-long tokens
-// come silently (prompt=none) as long as that account is signed in to Google in this browser.
 const CLIENT_ID = "YOUR-GOOGLE-CLIENT-ID";
 const SCOPE = "https://www.googleapis.com/auth/gmail.modify";
-const tokens = {}; // account -> { token, until }
+const tokens = {};
 
 export async function gmailToken(account, interactive = false) {
   if (Date.now() < tokens[account]?.until) return tokens[account].token;
@@ -24,7 +21,6 @@ export async function gmailToken(account, interactive = false) {
   return token;
 }
 
-// Google may hand back a token for a different signed-in account; never use it on the wrong mailbox.
 async function checkAccount(token, account) {
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", { headers: { Authorization: `Bearer ${token}` } });
   const { emailAddress } = await res.json();

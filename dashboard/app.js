@@ -46,7 +46,7 @@ async function load(token, email) {
   if (session) {
     localStorage.setItem('session', session);
     localStorage.setItem('email', email);
-    postMessage({ type: 'et-session', session }, location.origin); // the extension, if installed, signs in too
+    postMessage({ type: 'et-session', session }, location.origin);
   }
   const mails = await res.json();
   $('.who').hidden = false;

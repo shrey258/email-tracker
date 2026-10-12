@@ -1,8 +1,5 @@
 package main
 
-// The server: setup and routes. Each route's handler lives in its own file:
-// mails.go (register), tracking.go (open, click), stats.go (stats), auth.go (sign-in).
-
 import (
 	"context"
 	_ "embed"
@@ -40,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// ponytail: schema applied on every boot with IF NOT EXISTS; add a migration tool once tables need altering.
+
 	if _, err := db.Exec(ctx, schema); err != nil {
 		log.Fatal("applying schema: ", err)
 	}

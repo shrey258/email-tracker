@@ -1,52 +1,74 @@
-// Rewrites a raw email (as the Gmail API returns it) so tracking URLs of your emails end in "?me".
-// Only the HTML parts change; they're decoded, edited and saved back as base64.
 import { BASE } from "./api.js";
 
-// Our tracking URLs; group 1 is the email's id.
-const OURS = new RegExp(`${BASE.replace(/[.\/]/g, "\\$&")}/(?:o/([\\w-]+)/[\\w-]+|c/([\\w-]+)/[\\w-]+/\\d+)(?![\\w/?-])`, "g");
+const HOST = BASE.replace(/[.\/]/g, "\\$&");
+const OPEN_URL = "o/([\\w-]+)/[\\w-]+";
+const CLICK_URL = "c/([\\w-]+)/[\\w-]+/\\d+";
+const TRACKING_URL = new RegExp(`${HOST}/(?:${OPEN_URL}|${CLICK_URL})(?![\\w/?-])`, "g");
 
-// Returns the new raw email, or null if it has none of yourIds' tracking URLs left to mark.
 export function markOwnCopy(rawBase64url, yourIds) {
   const before = fromBase64url(rawBase64url);
   const after = rewritePart(before, yourIds);
   return after === before ? null : toBase64url(after);
 }
 
-// A part is headers, a blank line, then a body. Multipart bodies hold more parts between boundaries.
 function rewritePart(part, yourIds) {
   const split = part.search(/\r?\n\r?\n/);
   if (split < 0) return part;
-  const head = part.slice(0, split), body = part.slice(split);
+
+  const head = part.slice(0, split);
+  const body = part.slice(split);
   const type = header(head, "Content-Type");
   const boundary = type.match(/boundary="?([^";]+)"?/i)?.[1];
-  if (/^multipart\//i.test(type) && boundary) {
-    return head + body.split(`--${boundary}`).map((p, i, all) => (i === 0 || i === all.length - 1 ? p : rewritePart(p, yourIds))).join(`--${boundary}`);
-  }
-  if (!/^\s*text\/html/i.test(type)) return part;
+
+  if (/^multipart\//i.test(type) && boundary) return head + rewriteMultipart(body, boundary, yourIds);
+  if (/^\s*text\/html/i.test(type)) return rewriteHtml(head, body, yourIds) ?? part;
+  return part;
+}
+
+function rewriteMultipart(body, boundary, yourIds) {
+  const parts = body.split(`--${boundary}`);
+  const inner = (i) => i > 0 && i < parts.length - 1;
+  return parts.map((p, i) => (inner(i) ? rewritePart(p, yourIds) : p)).join(`--${boundary}`);
+}
+
+function rewriteHtml(head, body, yourIds) {
   const html = decode(body.replace(/^\r?\n\r?\n/, ""), header(head, "Content-Transfer-Encoding"));
-  const marked = html.replace(OURS, (url, openId, clickId) => (yourIds.has(openId ?? clickId) ? `${url}?me` : url));
-  if (marked === html) return part;
-  const newHead = head.replace(/^Content-Transfer-Encoding:.*(\r?\n[ \t].*)*\r?\n?/im, "").replace(/\s*$/, "");
-  return `${newHead}\r\nContent-Transfer-Encoding: base64\r\n\r\n${utf8ToBase64(marked).replace(/.{76}/g, "$&\r\n")}\r\n`;
+  const marked = html.replace(TRACKING_URL, (url, openId, clickId) => (yourIds.has(openId ?? clickId) ? `${url}?me` : url));
+  if (marked === html) return null;
+
+  const headWithoutEncoding = head.replace(/^Content-Transfer-Encoding:.*(\r?\n[ \t].*)*\r?\n?/im, "").trimEnd();
+  const base64Lines = utf8ToBase64(marked).replace(/.{76}/g, "$&\r\n");
+  return `${headWithoutEncoding}\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64Lines}\r\n`;
 }
 
-// Value of a header, with folded lines joined.
 function header(head, name) {
-  return head.replace(/\r?\n[ \t]+/g, " ").match(new RegExp(`^${name}:\\s*(.*)$`, "im"))?.[1] ?? "";
+  const unfolded = head.replace(/\r?\n[ \t]+/g, " ");
+  return unfolded.match(new RegExp(`^${name}:\\s*(.*)$`, "im"))?.[1] ?? "";
 }
 
-// Body bytes (as a binary string) to text, per its transfer encoding.
 function decode(body, encoding) {
   let bytes = body;
-  if (/quoted-printable/i.test(encoding)) bytes = body.replace(/=\r?\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  if (/quoted-printable/i.test(encoding)) bytes = decodeQuotedPrintable(body);
   else if (/base64/i.test(encoding)) bytes = atob(body.replace(/\s/g, ""));
   return new TextDecoder().decode(Uint8Array.from(bytes, (c) => c.charCodeAt(0)));
 }
 
-function utf8ToBase64(text) {
-  let bin = "";
-  for (const b of new TextEncoder().encode(text)) bin += String.fromCharCode(b);
-  return btoa(bin);
+function decodeQuotedPrintable(body) {
+  return body
+    .replace(/=\r?\n/g, "")
+    .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
-const fromBase64url = (s) => atob(s.replace(/-/g, "+").replace(/_/g, "/"));
-const toBase64url = (s) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+function utf8ToBase64(text) {
+  let binary = "";
+  for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function fromBase64url(s) {
+  return atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+}
+
+function toBase64url(s) {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}

@@ -1,7 +1,5 @@
 package main
 
-// Sign-in: Google proves who you are once; after that the server's own signed session does.
-
 import (
 	"encoding/json"
 	"log"
@@ -16,9 +14,6 @@ var tokeninfo = &http.Client{Timeout: 5 * time.Second}
 
 const sessionTTL = 30 * 24 * time.Hour
 
-// signedIn returns which owner account the request is from. It accepts a Google ID token from an
-// owner account or a session we issued earlier, and answers with a fresh 30-day session in
-// X-Session, so you only sign in again after 30 days unused. Google's tokens last an hour.
 func (s *server) signedIn(w http.ResponseWriter, r *http.Request) (string, bool) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || token == "" {
@@ -30,25 +25,30 @@ func (s *server) signedIn(w http.ResponseWriter, r *http.Request) (string, bool)
 			return "", false
 		}
 	}
-	exp := strconv.FormatInt(time.Now().Add(sessionTTL).Unix(), 10)
-	w.Header().Set("X-Session", exp+"."+email+"."+sign(s.key, purposeSession, exp+"."+email))
+	w.Header().Set("X-Session", s.newSession(email))
 	return email, true
 }
 
-// A session is "<expiry unix>.<email>.<signature over expiry.email>".
-func (s *server) validSession(token string) (string, bool) {
-	i, j := strings.Index(token, "."), strings.LastIndex(token, ".")
-	if i < 0 || j <= i+1 {
-		return "", false
-	}
-	n, err := strconv.ParseInt(token[:i], 10, 64)
-	email := token[i+1 : j]
-	return email, err == nil && time.Now().Unix() < n && verify(s.key, purposeSession, token[:j], token[j+1:]) && s.isOwner(email)
+func (s *server) newSession(email string) string {
+	expiry := strconv.FormatInt(time.Now().Add(sessionTTL).Unix(), 10)
+	signed := expiry + "." + email
+	return signed + "." + sign(s.key, purposeSession, signed)
 }
 
-// isOwner asks Google to check the ID token's signature and expiry, then checks it was issued
-// for our dashboard (aud) to one of the owners' verified addresses, and returns that address.
-// ponytail: one call to Google per sign-in; verify locally against Google's keys if this gets slow.
+func (s *server) validSession(token string) (string, bool) {
+	firstDot, lastDot := strings.Index(token, "."), strings.LastIndex(token, ".")
+	if firstDot < 0 || lastDot <= firstDot+1 {
+		return "", false
+	}
+	signed, signature := token[:lastDot], token[lastDot+1:]
+	email := token[firstDot+1 : lastDot]
+	expiry, err := strconv.ParseInt(token[:firstDot], 10, 64)
+	if err != nil || time.Now().Unix() >= expiry {
+		return "", false
+	}
+	return email, verify(s.key, purposeSession, signed, signature) && s.isOwner(email)
+}
+
 func (s *server) ownerEmail(token string) (string, bool) {
 	resp, err := tokeninfo.Get("https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(token))
 	if err != nil {
@@ -70,7 +70,6 @@ func (s *server) ownerEmail(token string) (string, bool) {
 	return strings.ToLower(t.Email), s.isOwner(t.Email)
 }
 
-// isOwner reports whether the address is in OWNER_EMAIL, so removing an account there also ends its sessions.
 func (s *server) isOwner(email string) bool {
 	for _, o := range s.owners {
 		if strings.EqualFold(strings.TrimSpace(o), email) {

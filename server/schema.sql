@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS mails (
     gmail_id   TEXT
 );
 
--- The Gmail account that sent it; each account only ever sees its own emails.
 ALTER TABLE mails ADD COLUMN IF NOT EXISTS sender TEXT;
 CREATE INDEX IF NOT EXISTS mails_sender ON mails (sender, sent_at);
 
@@ -33,8 +32,6 @@ CREATE TABLE IF NOT EXISTS clicks (
 );
 CREATE INDEX IF NOT EXISTS clicks_mail_id ON clicks (mail_id);
 
--- Supabase exposes public tables through its REST API. RLS with no policies blocks
--- that API entirely; our server connects as the table owner, which RLS doesn't restrict.
 ALTER TABLE mails ENABLE ROW LEVEL SECURITY;
 ALTER TABLE links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE opens ENABLE ROW LEVEL SECURITY;

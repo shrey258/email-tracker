@@ -1,4 +1,3 @@
-// A small message at the bottom-left of Gmail, gone after 6 seconds.
 function toast(text) {
   const t = Object.assign(document.createElement("div"), { textContent: text });
   Object.assign(t.style, {

@@ -7,8 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Every SQL statement the server runs lives in this file.
-
 func insertMail(ctx context.Context, tx pgx.Tx, id, sender, subject string, recipients []string) error {
 	_, err := tx.Exec(ctx, `INSERT INTO mails (id, sender, subject, recipients) VALUES ($1, $2, $3, $4)`, id, sender, subject, recipients)
 	return err
@@ -19,7 +17,6 @@ func insertLink(ctx context.Context, tx pgx.Tx, mailID string, n int, url string
 	return err
 }
 
-// insertOpen skips the open if the same email was opened in the last minute.
 func insertOpen(ctx context.Context, db *pgxpool.Pool, mailID string) error {
 	_, err := db.Exec(ctx, `
 INSERT INTO opens (mail_id) SELECT $1
@@ -27,7 +24,6 @@ WHERE NOT EXISTS (SELECT 1 FROM opens WHERE mail_id = $1 AND opened_at > now() -
 	return err
 }
 
-// linkURL returns pgx.ErrNoRows if the email has no link n.
 func linkURL(ctx context.Context, db *pgxpool.Pool, mailID string, n int) (string, error) {
 	var url string
 	err := db.QueryRow(ctx, `SELECT url FROM links WHERE mail_id = $1 AND n = $2`, mailID, n).Scan(&url)
@@ -39,8 +35,6 @@ func insertClick(ctx context.Context, db *pgxpool.Pool, mailID string, n int) er
 	return err
 }
 
-// allStats returns the sender's newest 200 emails as a JSON array, built by Postgres.
-// ponytail: fixed limit, add paging if 200 isn't enough.
 func allStats(ctx context.Context, db *pgxpool.Pool, sender string) ([]byte, error) {
 	var out []byte
 	err := db.QueryRow(ctx, `

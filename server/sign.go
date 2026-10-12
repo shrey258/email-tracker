@@ -6,8 +6,6 @@ import (
 	"encoding/base64"
 )
 
-// Separate purposes so the signature that appears inside the email ("track")
-// can't be reused by a recipient as a sign-in session ("session").
 const (
 	purposeTrack   = "track"
 	purposeSession = "session"
@@ -20,6 +18,6 @@ func sign(key []byte, purpose, id string) string {
 }
 
 func verify(key []byte, purpose, id, sig string) bool {
-	// hmac.Equal compares in constant time, so response timing doesn't leak how much of a guess was right.
+
 	return hmac.Equal([]byte(sign(key, purpose, id)), []byte(sig))
 }

@@ -54,5 +54,15 @@ dashboard / extension ──GET /stats (signed in)──▶ server
 
 ## Tests
 
-- `server/test.sh`: runs the server's endpoints against a local or live server and deletes its test data afterwards (instructions at the top of the file).
 - `cd server && go test ./...`: the signature checks.
+- `node extension/mime.test.mjs`: marking your own copy of an email.
+- `server/test.sh`: every server endpoint, against a running server; deletes its test email afterwards.
+  - Local, with Postgres in Docker:
+    ```sh
+    docker run -d --name pg -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:17
+    cd server
+    DATABASE_URL='postgres://postgres:dev@localhost:5432/postgres?sslmode=disable' HMAC_KEY=dev-key \
+      GOOGLE_CLIENT_ID=x OWNER_EMAIL=a@test.dev,b@test.dev DASHBOARD_ORIGIN=http://localhost:5199 go run . &
+    ./test.sh
+    ```
+  - Live: `BASE=https://YOUR-FLY-APP.fly.dev HMAC_KEY=... DATABASE_URL=... A=you@gmail.com B=your-other@gmail.com ./test.sh`, where A and B are two accounts in `OWNER_EMAIL`.
