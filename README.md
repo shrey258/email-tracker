@@ -32,12 +32,11 @@ You need: a [Fly.io](https://fly.io) account, a Postgres database ([Supabase](ht
    The server creates its tables on first boot. `OWNER_EMAIL` lists the Google accounts allowed to sign in.
 4. **Fill in your URLs.** Replace the placeholders:
    - `YOUR-SERVER.example` in `extension/api.js`, `extension/gmail.js`, `extension/manifest.json` and `dashboard/app.js`, with your Fly app's host (`your-app.fly.dev`).
-   - `YOUR-DASHBOARD.example` in `extension/api.js`, `extension/options.js` and `extension/manifest.json`, with your dashboard's host.
+   - `YOUR-DASHBOARD.example` in `extension/api.js`, `extension/setup.js` and `extension/manifest.json`, with your dashboard's host.
    - `YOUR-GOOGLE-CLIENT-ID` in `dashboard/index.html` and `extension/google-auth.js`.
    Then deploy the dashboard again.
-5. **Extension.** `chrome://extensions` → Developer mode → *Load unpacked* → pick `extension/`.
-6. **Sign in.** Open your dashboard and sign in with Google, once for each Gmail account you send from. The extension picks up each sign-in; each lasts 30 days from last use. Each account only ever sees its own emails. Turn off other trackers (Mailtrack, etc.): they rewrite the same links.
-7. **Gmail permission.** Enable the Gmail API in your Google Cloud project, and add `https://<your-extension-id>.chromiumapp.org/` as an authorised redirect URI on the same client (the id is on `chrome://extensions`). In the extension's options, click *Connect Gmail* for each account. Google warns the app isn't verified; it's yours, continue.
+5. **Gmail permission.** Enable the Gmail API in your Google Cloud project. Load the extension once (next step) to see its id on `chrome://extensions`, then add `https://<extension-id>.chromiumapp.org/` as an authorised redirect URI on the same client.
+6. **Extension.** `chrome://extensions` → Developer mode → *Load unpacked* → pick `extension/`. A setup page opens: sign in on the dashboard with each Gmail account you send from, then click *Connect Gmail* for each (Google warns the app isn't verified; it's yours, continue). Turn off other trackers (Mailtrack, etc.): they rewrite the same links. Reopen setup any time from the Email Tracker toolbar button; it shows a red "!" until setup is done.
 
 Send an email from Gmail. It shows up on the dashboard, and once the recipient opens it, inside Gmail too.
 

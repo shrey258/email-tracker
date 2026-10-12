@@ -11,6 +11,7 @@ function takeOver(gmailSend) {
   for (const t of ["mousedown", "mouseup"]) ours.addEventListener(t, (e) => e.stopImmediatePropagation());
   gmailSend.before(ours);
   gmailSend.style.display = "none";
+  addComposeStatus(ours);
 }
 
 async function trackedSend(found, gmailSend) {
@@ -28,7 +29,10 @@ async function trackedSend(found, gmailSend) {
   const result = await registerEmail(root, links);
   if (result.ok) {
     addTracking(body, links, result);
-    if (partial) toast("Tracked, but couldn't read the subject and recipients. Gmail may have changed its layout.");
+    toast(partial
+      ? "Tracked, but couldn't read the subject and recipients. Gmail may have changed its layout."
+      : "Tracked. Opens will show up here and on your dashboard.");
+    refreshMarks();
   } else {
     toast(`Not tracked: ${result.error}`);
   }

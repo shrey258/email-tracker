@@ -3,20 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="google-client-id" content="YOUR-GOOGLE-CLIENT-ID">
 <title>Email tracker</title>
 <script src="https://accounts.google.com/gsi/client" async></script>
+<link rel="icon" href="favicon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
   <header>
     <h1>Email tracker</h1>
-    <div class="g_id_signin" data-size="medium" data-shape="pill"></div>
-    <span class="who" hidden><span></span><button type="button" onclick="signOut()">Sign out</button></span>
+    <div class="accounts" hidden>
+      <select id="account" aria-label="Account"></select>
+      <button type="button" id="sign-out">Sign out</button>
+    </div>
   </header>
-  <div id="g_id_onload" data-client_id="YOUR-GOOGLE-CLIENT-ID" data-callback="onLogin" data-auto_prompt="false"></div>
   <section class="summary" hidden></section>
-  <p class="note" id="status"><strong>Sign in to see your emails</strong><span>Sign in as the Gmail account you send from to see its emails.</span></p>
+  <div class="note" id="status"></div>
+  <div class="google-button" id="google-button" hidden></div>
   <section class="list" hidden></section>
 </main>
 <script src="app.js"></script>

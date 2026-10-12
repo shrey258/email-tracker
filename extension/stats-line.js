@@ -27,14 +27,15 @@ function statsLine(result) {
   const clicks = result.mail?.clicks ?? [];
   const line = document.createElement("div");
   line.dataset.etStats = "1";
-  line.textContent = result.ok ? summary(opens, clicks) : `Email Tracker: ${result.error}`;
+  if (result.ok) line.append(checkMark(opens.length > 0), summary(opens, clicks));
+  else line.textContent = `Email Tracker: ${result.error}`;
   line.title = [
     ...opens.map((t) => `Opened ${new Date(t).toLocaleString()}`),
     ...clicks.map((c) => `Clicked ${c.url} ${new Date(c.at).toLocaleString()}`),
   ].join("\n");
   Object.assign(line.style, {
     font: "12px/1.5 'Google Sans', Roboto, sans-serif",
-    color: opens.length ? "#188038" : "#5f6368",
+    color: opens.length ? GREEN : GREY,
     margin: "0 0 8px",
   });
   return line;

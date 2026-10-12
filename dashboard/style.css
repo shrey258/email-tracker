@@ -15,10 +15,15 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 system
 main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; }
 h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
-.who { color: var(--muted); font-size: 13px; display: flex; gap: 12px; align-items: center; }
-.who[hidden] { display: none; }
-.who button { font: inherit; color: inherit; background: none; border: 0; padding: 4px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.who button:hover { color: var(--fg); }
+.accounts { color: var(--muted); font-size: 13px; display: flex; gap: 12px; align-items: center; }
+.accounts[hidden] { display: none; }
+.accounts select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; max-width: 260px; }
+.accounts select:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.accounts button { font: inherit; color: inherit; background: none; border: 0; padding: 4px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.accounts button:hover { color: var(--fg); }
+.summary[hidden], .list[hidden] { display: none; }
+.google-button { display: flex; justify-content: center; margin-top: -40px; padding-bottom: 64px; }
+.google-button[hidden] { display: none; }
 
 .summary { display: grid; grid-template-columns: repeat(3, 1fr); margin: 32px 0 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .summary div { padding: 16px 20px; }

@@ -1,5 +1,5 @@
 import { BASE, api, setSession, signedInAccounts } from "./api.js";
-import { gmailToken } from "./google-auth.js";
+import { forgetGmail, gmailToken } from "./google-auth.js";
 import { markOwnCopies } from "./own-copy.js";
 
 async function register({ account, subject, recipients, links }) {
@@ -26,6 +26,12 @@ async function stats({ account, id }) {
   return { mail: cache[account].byId[id] ?? null };
 }
 
+async function statsList({ account, fresh }) {
+  const age = cache[account] ? Date.now() - cache[account].at : Infinity;
+  if (age > 30000 || (fresh && age > 3000)) cache[account] = await fetchStats(account);
+  return { mails: Object.values(cache[account].byId) };
+}
+
 function accountOf(session) {
   return session.slice(session.indexOf(".") + 1, session.lastIndexOf("."));
 }
@@ -37,15 +43,57 @@ async function ownCopies({ account }) {
 
 async function connectGmail({ account }) {
   await gmailToken(account, true);
+  await chrome.storage.local.set({ [`gmailError:${account}`]: "" });
   return {};
+}
+
+async function setupStatus({ account }) {
+  const all = await chrome.storage.local.get(null);
+  return {
+    signedIn: `session:${account}` in all,
+    gmailConnected: all[`gmailError:${account}`] === "",
+    disconnected: `disconnected:${account}` in all,
+  };
+}
+
+async function receiveSession({ session, fromLoad }) {
+  const account = accountOf(session);
+  if (fromLoad && `disconnected:${account}` in (await chrome.storage.local.get(`disconnected:${account}`))) return {};
+  await chrome.storage.local.remove(`disconnected:${account}`);
+  await setSession(account, session);
+  return {};
+}
+
+async function disconnect({ account }) {
+  await forgetGmail(account);
+  await chrome.storage.local.remove([`session:${account}`, `gmailError:${account}`]);
+  await chrome.storage.local.set({ [`disconnected:${account}`]: Date.now() });
+  return {};
+}
+
+async function openSetup() {
+  await chrome.runtime.openOptionsPage();
+  return {};
+}
+
+async function updateBadge() {
+  const all = await chrome.storage.local.get(null);
+  const accounts = await signedInAccounts();
+  const done = accounts.length > 0 && accounts.every((a) => all[`gmailError:${a}`] === "");
+  await chrome.action.setBadgeText({ text: done ? "" : "!" });
+  await chrome.action.setBadgeBackgroundColor({ color: "#d93025" });
 }
 
 const handlers = {
   register,
   stats,
-  session: ({ session }) => setSession(accountOf(session), session),
+  statsList,
+  session: receiveSession,
+  disconnect,
   ownCopies,
   connectGmail,
+  setupStatus,
+  openSetup,
 };
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
@@ -56,6 +104,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     .catch((e) => reply({ ok: false, error: e.message }));
   return true;
 });
+
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === "install") chrome.runtime.openOptionsPage();
+});
+
+chrome.action.onClicked.addListener(() => chrome.runtime.openOptionsPage());
+chrome.storage.onChanged.addListener(updateBadge);
+updateBadge();
 
 chrome.runtime.onInstalled.addListener(() =>
   chrome.declarativeNetRequest.updateDynamicRules({

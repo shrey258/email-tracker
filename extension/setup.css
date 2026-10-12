@@ -1,0 +1,33 @@
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#f8f9fb, #16171a);
+  --surface: light-dark(#fff, #1f2024);
+  --fg: light-dark(#1d1f24, #ececee);
+  --muted: light-dark(#6b7078, #9a9ea6);
+  --border: light-dark(rgba(0, 0, 0, 0.08), #2c2e33);
+  --accent: light-dark(#1a73e8, #8ab4f8);
+  --hover: light-dark(#f1f3f4, #2a2c31);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 600px; margin: 0 auto; padding: 56px 20px; }
+h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.lead { margin: 0 0 28px; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.card h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.card > p { margin: 0 0 12px; color: var(--muted); }
+ul { list-style: none; margin: 0 0 12px; padding: 0; }
+li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.account { overflow-wrap: anywhere; }
+.right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.state { color: var(--muted); font-size: 13px; }
+.state.ready { color: var(--accent); font-weight: 500; }
+.empty { color: var(--muted); }
+.button, button { display: inline-block; font: inherit; font-weight: 500; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--accent); text-decoration: none; cursor: pointer; }
+.button:hover, button:hover { background: var(--hover); }
+.button:focus-visible, button:focus-visible, .add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.add { color: var(--accent); text-decoration: none; font-weight: 500; }
+.add:hover { text-decoration: underline; text-underline-offset: 2px; }
+.fine { margin: 16px 4px 0; color: var(--muted); font-size: 13px; }
+button.quiet { border-color: transparent; background: none; color: var(--muted); font-weight: 400; padding: 7px 6px; margin-left: 4px; }
+button.quiet:hover { color: var(--fg); background: none; text-decoration: underline; text-underline-offset: 2px; }

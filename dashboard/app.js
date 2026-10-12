@@ -16,42 +16,116 @@ function note(title, line) {
   $('#status').replaceChildren(el('strong', { textContent: title }), el('span', { textContent: line }));
 }
 
-function onLogin({ credential }) {
-  const email = JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email;
-  load(credential, email);
+const CLIENT_ID = document.querySelector('meta[name="google-client-id"]').content;
+const params = new URLSearchParams(location.search);
+
+function sessions() {
+  return JSON.parse(localStorage.getItem('sessions') ?? '{}');
 }
 
-function signOut() {
+function saveSession(email, session) {
+  localStorage.setItem('sessions', JSON.stringify({ ...sessions(), [email]: session }));
+  postMessage({ type: 'et-session', session }, location.origin);
+}
+
+function removeSession(email) {
+  const all = sessions();
+  delete all[email];
+  localStorage.setItem('sessions', JSON.stringify(all));
+}
+
+function currentAccount() {
+  const all = sessions();
+  const saved = localStorage.getItem('current');
+  return saved in all ? saved : Object.keys(all)[0];
+}
+
+function moveOldSession() {
+  const session = localStorage.getItem('session'), email = localStorage.getItem('email');
+  if (session && email) saveSession(email, session);
   localStorage.removeItem('session');
   localStorage.removeItem('email');
-  location.reload();
 }
 
-async function load(token, email) {
-  $('.g_id_signin').hidden = true;
-  note('Loading…', 'Fetching your emails.');
-  const res = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
-  if (!res || !res.ok) {
-    if (res?.status === 401 && token === localStorage.getItem('session')) {
-      localStorage.removeItem('session');
-      $('.g_id_signin').hidden = false;
-      note('Signed out', 'Your session expired. Sign in again.');
-    } else if (res?.status === 401) {
-      $('.g_id_signin').hidden = false;
-      note('This account isn’t allowed', 'Only accounts listed in the server’s OWNER_EMAIL can sign in.');
-    } else note('Couldn’t reach the server', 'It may be waking up. Reload in a few seconds.');
-    return;
-  }
-  const session = res.headers.get('X-Session');
-  if (session) {
-    localStorage.setItem('session', session);
-    localStorage.setItem('email', email);
-    postMessage({ type: 'et-session', session }, location.origin);
-  }
-  const mails = await res.json();
-  $('.who').hidden = false;
-  $('.who span').textContent = email;
+function emailOf(credential) {
+  return JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email;
+}
 
+function clearEmails() {
+  $('.summary').hidden = $('.list').hidden = true;
+}
+
+function showSignIn(title, line) {
+  clearEmails();
+  note(title, line);
+  $('#google-button').hidden = false;
+}
+
+function renderAccounts() {
+  const emails = Object.keys(sessions());
+  $('.accounts').hidden = !emails.length;
+  $('#account').replaceChildren(
+    ...emails.map(e => el('option', { value: e, textContent: e, selected: e === currentAccount() })),
+    el('option', { value: 'add', textContent: 'Add account…' }));
+}
+
+window.onGoogleLibraryLoad = () => {
+  google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onLogin, login_hint: params.get('hint') ?? '', use_fedcm_for_button: false, ux_mode: 'popup' });
+  google.accounts.id.renderButton($('#google-button'), { size: 'large', shape: 'pill', text: 'signin_with', theme: 'filled_black' });
+};
+
+function onLogin({ credential }) {
+  load(emailOf(credential), credential);
+}
+
+async function load(email, token = sessions()[email]) {
+  clearEmails();
+  $('#google-button').hidden = true;
+  note('Loading…', `Fetching emails sent from ${email}.`);
+  const res = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
+  if (!res) return note('Couldn’t reach the server', 'It may be waking up. Reload in a few seconds.');
+  if (res.status === 401 && token === sessions()[email]) {
+    removeSession(email);
+    renderAccounts();
+    return showSignIn('Signed out', `The session for ${email} expired. Sign in again.`);
+  }
+  if (res.status === 401) return showSignIn('This account isn’t allowed', `Only accounts listed in the server’s OWNER_EMAIL can sign in, and ${email} isn’t one.`);
+  if (!res.ok) return note('Couldn’t reach the server', 'It may be waking up. Reload in a few seconds.');
+
+  const session = res.headers.get('X-Session');
+  if (session) saveSession(email, session);
+  localStorage.setItem('current', email);
+  renderAccounts();
+  showEmails(email, await res.json());
+}
+
+function start() {
+  moveOldSession();
+  renderAccounts();
+  const hint = params.get('hint');
+  const account = currentAccount();
+  if (hint && hint in sessions()) return load(hint);
+  if (hint) return showSignIn(`Sign in as ${hint}`, 'So Email Tracker can track the emails you send from it.');
+  if (params.has('add')) return showSignIn('Add an account', 'Sign in with another Gmail account you send from.');
+  if (account) return load(account);
+  showSignIn('Sign in to see your emails', 'Sign in with the Gmail account you send from. You can add more accounts after.');
+}
+
+$('#account').onchange = (e) => {
+  if (e.target.value === 'add') {
+    renderAccounts();
+    return showSignIn('Add an account', 'Sign in with another Gmail account you send from.');
+  }
+  load(e.target.value);
+};
+
+$('#sign-out').onclick = () => {
+  removeSession(currentAccount());
+  localStorage.removeItem('current');
+  start();
+};
+
+function showEmails(email, mails) {
   if (!mails.length) return note('No emails tracked yet', `Send an email from Gmail as ${email} with the extension on and it shows up here.`);
   $('#status').hidden = true;
   const opened = mails.filter(m => m.opens.length).length;
@@ -84,4 +158,5 @@ function row(m) {
   return el('details', {}, head, timeline);
 }
 
-if (localStorage.getItem('session')) load(localStorage.getItem('session'), localStorage.getItem('email'));
+if (window.google?.accounts) window.onGoogleLibraryLoad();
+start();
