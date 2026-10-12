@@ -1,5 +1,5 @@
 import { api } from "./api.js";
-import { gmail } from "./gmail-api.js";
+import { gmail, gmailDelete } from "./gmail-api.js";
 import { markOwnCopy } from "./mime.js";
 
 const checked = new Set();
@@ -34,6 +34,6 @@ async function replaceIfYours(account, id, yourIds) {
 
   const labelIds = msg.labelIds.filter((l) => l !== "CHAT");
   await gmail(account, "/messages?internalDateSource=dateHeader", { raw, threadId: msg.threadId, labelIds });
-  await gmail(account, `/messages/${id}/trash`, {});
+  await gmailDelete(account, `/messages/${id}`);
   return true;
 }

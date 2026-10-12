@@ -1,23 +1,37 @@
 const API = 'https://YOUR-SERVER.example';
-const $ = s => document.querySelector(s);
-const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
-const full = t => new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-function ago(t) {
-  const s = (new Date(t) - Date.now()) / 1000;
-  for (const [unit, n] of [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]])
-    if (Math.abs(s) >= n) return rtf.format(Math.round(s / n), unit);
+const CLIENT_ID = document.querySelector('meta[name="google-client-id"]').content;
+const params = new URLSearchParams(location.search);
+const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
+
+const $ = (selector) => document.querySelector(selector);
+
+function el(tag, props = {}, ...children) {
+  const element = Object.assign(document.createElement(tag), props);
+  element.append(...children);
+  return element;
+}
+
+function fullDate(time) {
+  return new Date(time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function ago(time) {
+  const seconds = (new Date(time) - Date.now()) / 1000;
+  for (const [unit, size] of UNITS) {
+    if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
+  }
   return 'just now';
 }
-const time = t => el('time', { dateTime: t, title: full(t), textContent: ago(t) });
+
+function timeAgo(time) {
+  return el('time', { dateTime: time, title: fullDate(time), textContent: ago(time) });
+}
 
 function note(title, line) {
   $('#status').hidden = false;
   $('#status').replaceChildren(el('strong', { textContent: title }), el('span', { textContent: line }));
 }
-
-const CLIENT_ID = document.querySelector('meta[name="google-client-id"]').content;
-const params = new URLSearchParams(location.search);
 
 function sessions() {
   return JSON.parse(localStorage.getItem('sessions') ?? '{}');
@@ -40,13 +54,6 @@ function currentAccount() {
   return saved in all ? saved : Object.keys(all)[0];
 }
 
-function moveOldSession() {
-  const session = localStorage.getItem('session'), email = localStorage.getItem('email');
-  if (session && email) saveSession(email, session);
-  localStorage.removeItem('session');
-  localStorage.removeItem('email');
-}
-
 function emailOf(credential) {
   return JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email;
 }
@@ -65,7 +72,7 @@ function renderAccounts() {
   const emails = Object.keys(sessions());
   $('.accounts').hidden = !emails.length;
   $('#account').replaceChildren(
-    ...emails.map(e => el('option', { value: e, textContent: e, selected: e === currentAccount() })),
+    ...emails.map((email) => el('option', { value: email, textContent: email, selected: email === currentAccount() })),
     el('option', { value: 'add', textContent: 'Add account…' }));
 }
 
@@ -100,7 +107,6 @@ async function load(email, token = sessions()[email]) {
 }
 
 function start() {
-  moveOldSession();
   renderAccounts();
   const hint = params.get('hint');
   const account = currentAccount();
@@ -111,12 +117,12 @@ function start() {
   showSignIn('Sign in to see your emails', 'Sign in with the Gmail account you send from. You can add more accounts after.');
 }
 
-$('#account').onchange = (e) => {
-  if (e.target.value === 'add') {
+$('#account').onchange = (event) => {
+  if (event.target.value === 'add') {
     renderAccounts();
     return showSignIn('Add an account', 'Sign in with another Gmail account you send from.');
   }
-  load(e.target.value);
+  load(event.target.value);
 };
 
 $('#sign-out').onclick = () => {
@@ -128,34 +134,63 @@ $('#sign-out').onclick = () => {
 function showEmails(email, mails) {
   if (!mails.length) return note('No emails tracked yet', `Send an email from Gmail as ${email} with the extension on and it shows up here.`);
   $('#status').hidden = true;
-  const opened = mails.filter(m => m.opens.length).length;
-  const clicked = mails.filter(m => m.clicks.length).length;
-  $('.summary').replaceChildren(...[[mails.length, 'Sent'], [opened, 'Opened'], [clicked, 'Clicked']]
-    .map(([n, label]) => el('div', {}, el('b', { textContent: n }), el('span', { textContent: label }))));
+  const totals = [
+    [mails.length, 'Sent'],
+    [mails.filter((mail) => mail.opens.length).length, 'Opened'],
+    [mails.filter((mail) => mail.clicks.length).length, 'Clicked'],
+  ];
+  $('.summary').replaceChildren(...totals.map(([count, label]) => el('div', {}, el('b', { textContent: count }), el('span', { textContent: label }))));
   $('.list').replaceChildren(...mails.map(row));
   $('.summary').hidden = $('.list').hidden = false;
 }
 
-function row(m) {
-  const n = m.opens.length;
-  const state = n ? `Opened${n > 1 ? ` ${n}×` : ''}` : 'Not opened';
-  const status = el('div', { className: `status ${n ? 'opened' : 'not-opened'}` },
-    el('div', { className: 'state' }, el('span', { className: 'dot' }), state),
-    el('div', { className: 'when' }, ...(n ? [time(m.opens[n - 1])] : ['sent ', time(m.sent_at)])));
-  const head = el('summary', {},
-    el('div', { className: 'main' },
-      el('div', { className: m.subject ? 'subject' : 'subject none', textContent: m.subject || '(no subject)' }),
-      el('div', { className: 'to', textContent: 'To ' + (m.recipients.join(', ') || 'unknown recipients') })),
-    status);
+function row(mail) {
+  return el('details', {}, rowSummary(mail), timeline(mail));
+}
 
+function rowSummary(mail) {
+  return el('summary', {},
+    el('div', { className: 'main' },
+      el('div', { className: mail.subject ? 'subject' : 'subject none', textContent: mail.subject || '(no subject)' }),
+      el('div', { className: 'to', textContent: 'To ' + (mail.recipients.join(', ') || 'unknown recipients') })),
+    openStatus(mail));
+}
+
+function openStatus(mail) {
+  const opens = mail.opens.length;
+  const label = opens ? `Opened${opens > 1 ? ` ${opens}×` : ''}` : 'Not opened';
+  const when = opens ? [timeAgo(mail.opens.at(-1))] : ['sent ', timeAgo(mail.sent_at)];
+  return el('div', { className: `status ${opens ? 'opened' : 'not-opened'}` },
+    el('div', { className: 'state' }, el('span', { className: 'mark' }, opens ? '✓✓' : '✓'), label),
+    el('div', { className: 'when' }, ...when));
+}
+
+function timeline(mail) {
   const events = [
-    { cls: 'sent', at: m.sent_at, what: 'Sent' },
-    ...m.opens.map(at => ({ cls: 'open', at, what: 'Opened' })),
-    ...m.clicks.map(c => ({ cls: 'click', at: c.at, what: el('span', {}, 'Clicked ', el('a', { href: c.url, target: '_blank', rel: 'noopener', textContent: c.url.replace(/^https?:\/\//, '') })) })),
+    { kind: 'sent', at: mail.sent_at, what: 'Sent' },
+    ...mail.opens.map((at) => ({ kind: 'open', at, what: 'Opened' })),
+    ...mail.clicks.map((click) => ({ kind: 'click', at: click.at, what: clickLabel(click.url) })),
   ].sort((a, b) => new Date(a.at) - new Date(b.at));
-  const timeline = el('ol', {}, ...events.map(e =>
-    el('li', { className: e.cls }, el('span', { className: 'what' }, e.what), el('time', { dateTime: e.at, textContent: full(e.at) }))));
-  return el('details', {}, head, timeline);
+  return el('ol', {}, ...sameMinuteMerged(events).map((event) =>
+    el('li', { className: event.kind },
+      el('span', { className: 'what' }, event.what, event.count > 1 ? ` ×${event.count}` : ''),
+      el('time', { dateTime: event.at, textContent: fullDate(event.at) }))));
+}
+
+function sameMinuteMerged(events) {
+  const rows = [];
+  for (const event of events) {
+    const last = rows.at(-1);
+    const sameMinute = last && last.kind === event.kind && fullDate(last.at) === fullDate(event.at) && last.kind !== 'click';
+    if (sameMinute) last.count++;
+    else rows.push({ ...event, count: 1 });
+  }
+  return rows;
+}
+
+function clickLabel(url) {
+  const link = el('a', { href: url, target: '_blank', rel: 'noopener', textContent: url.replace(/^https?:\/\//, '') });
+  return el('span', {}, 'Clicked ', link);
 }
 
 if (window.google?.accounts) window.onGoogleLibraryLoad();

@@ -6,6 +6,7 @@ function toast(text) {
     font: "14px/1.4 'Google Sans', Roboto, sans-serif", boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
   });
   document.body.append(t);
+  slideIn(t);
   const words = text.split(/\s+/).length;
-  setTimeout(() => t.remove(), Math.max(4000, words * 300));
+  setTimeout(() => slideOut(t), Math.max(4000, words * 300));
 }

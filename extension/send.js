@@ -1,7 +1,7 @@
 function takeOver(gmailSend) {
   gmailSend.dataset.et = "1";
   const ours = gmailSend.cloneNode(true);
-  for (const a of ["id", "jsaction", "jscontroller", "data-tooltip-id"]) ours.removeAttribute(a);
+  for (const attribute of ["id", "jsaction", "jscontroller", "data-tooltip-id"]) ours.removeAttribute(attribute);
   ours.dataset.etOurs = "1";
   ours.addEventListener("click", (e) => {
     e.preventDefault();
@@ -41,7 +41,7 @@ async function trackedSend(found, gmailSend) {
 }
 
 function trackableLinks(body) {
-  return [...body.querySelectorAll("a[href]")].filter((a) => /^https?:/i.test(a.href) && !a.href.includes(TRACKER));
+  return [...body.querySelectorAll("a[href]")].filter((a) => /^https?:\/\//i.test(a.getAttribute("href")) && !a.href.includes(TRACKER));
 }
 
 async function registerEmail(root, links) {

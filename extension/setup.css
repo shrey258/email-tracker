@@ -7,27 +7,46 @@
   --border: light-dark(rgba(0, 0, 0, 0.08), #2c2e33);
   --accent: light-dark(#1a73e8, #8ab4f8);
   --hover: light-dark(#f1f3f4, #2a2c31);
+  --hairline: 1px;
+  --elevation:
+    0 0 0 1px light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.09)),
+    0 1px 3px light-dark(rgb(0 0 0 / 0.05), transparent),
+    0 4px 10px -4px light-dark(rgb(0 0 0 / 0.05), transparent);
+  --ring: 0 0 0 1px light-dark(rgb(0 0 0 / 0.1), rgb(255 255 255 / 0.12));
+  --ring-hover: 0 0 0 1px light-dark(rgb(0 0 0 / 0.16), rgb(255 255 255 / 0.2));
+}
+@media (min-resolution: 192dpi) {
+  :root { --hairline: 0.5px; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
 main { max-width: 600px; margin: 0 auto; padding: 56px 20px; }
-h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
 .lead { margin: 0 0 28px; color: var(--muted); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.card { background: var(--surface); box-shadow: var(--elevation); border-radius: 12px; padding: 20px; }
 .card h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
 .card > p { margin: 0 0 12px; color: var(--muted); }
 ul { list-style: none; margin: 0 0 12px; padding: 0; }
-li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 10px 0; border-top: var(--hairline) solid var(--border); }
 .account { overflow-wrap: anywhere; }
 .right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .state { color: var(--muted); font-size: 13px; }
 .state.ready { color: var(--accent); font-weight: 500; }
 .empty { color: var(--muted); }
-.button, button { display: inline-block; font: inherit; font-weight: 500; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--accent); text-decoration: none; cursor: pointer; }
-.button:hover, button:hover { background: var(--hover); }
-.button:focus-visible, button:focus-visible, .add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.add { color: var(--accent); text-decoration: none; font-weight: 500; }
-.add:hover { text-decoration: underline; text-underline-offset: 2px; }
+.button, button {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px;
+  font: inherit; font-weight: 500; color: var(--accent); text-decoration: none; cursor: pointer;
+  background: var(--surface); border: 0; border-radius: 8px; box-shadow: var(--ring);
+  transition: box-shadow 150ms ease-out, background-color 150ms ease-out, transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .button:hover, button:hover { background: var(--hover); box-shadow: var(--ring-hover); }
+    }
+.button:active, button:active { transform: scale(0.96); }
+.button:focus-visible, button:focus-visible, .add:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+button.quiet { box-shadow: none; background: none; color: var(--muted); font-weight: 400; padding: 0 8px; }
+.add { display: inline-flex; align-items: center; min-height: 36px; color: var(--accent); text-decoration: none; font-weight: 500; border-radius: 4px; }
 .fine { margin: 16px 4px 0; color: var(--muted); font-size: 13px; }
-button.quiet { border-color: transparent; background: none; color: var(--muted); font-weight: 400; padding: 7px 6px; margin-left: 4px; }
-button.quiet:hover { color: var(--fg); background: none; text-decoration: underline; text-underline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

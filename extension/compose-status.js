@@ -9,9 +9,11 @@ async function addComposeStatus(ours) {
     alignSelf: "center",
   });
   if (tracked) {
-    chip.append(checkMark(false), "Tracked");
+    const mark = checkMark(false);
+    mark.style.color = "inherit";
+    chip.append(mark, "Tracked");
     chip.title = "Email Tracker will show when this email is opened and its links are clicked.";
-    Object.assign(chip.style, { color: GREEN, background: "rgba(24,128,56,0.1)" });
+    Object.assign(chip.style, { color: BLUE, background: "rgba(26,115,232,0.1)" });
   } else {
     chip.textContent = "Not tracked · Set up";
     chip.title = `Email Tracker isn't set up for ${account()}. Click to set it up.`;

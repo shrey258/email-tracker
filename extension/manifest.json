@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Email Tracker",
-  "version": "0.6.0",
+  "version": "0.7.1",
   "description": "Tracks opens and link clicks on emails sent from Gmail.",
   "permissions": [
     "storage",
@@ -25,8 +25,10 @@
       ],
       "js": [
         "gmail.js",
+        "motion.js",
         "toast.js",
         "marks.js",
+        "history.js",
         "stats-line.js",
         "compose-status.js",
         "send.js",

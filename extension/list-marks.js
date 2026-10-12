@@ -24,7 +24,7 @@ async function trackedBySubject() {
 }
 
 async function markRows() {
-  const rows = [...document.querySelectorAll("tr.zA")].filter((r) => !r.querySelector("[data-et-mark]"));
+  const rows = [...document.querySelectorAll("tr.zA")].filter((row) => !row.querySelector("[data-et-mark]"));
   if (!rows.length) return;
   const bySubject = await trackedBySubject();
   for (const row of rows) {
@@ -39,6 +39,6 @@ async function markRows() {
 
 setInterval(() => {
   listCache.at = 0;
-  document.querySelectorAll("tr.zA [data-et-mark]").forEach((m) => m.remove());
+  document.querySelectorAll("tr.zA [data-et-mark]").forEach((mark) => mark.remove());
   markRows();
 }, 60000);

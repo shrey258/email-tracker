@@ -2,6 +2,7 @@ const send = (session, fromLoad) => session && chrome.runtime.sendMessage({ type
 
 for (const session of Object.values(JSON.parse(localStorage.getItem("sessions") ?? "{}"))) send(session, true);
 
-window.addEventListener("message", (e) => {
-  if (e.source === window && e.origin === location.origin && e.data?.type === "et-session") send(e.data.session);
+window.addEventListener("message", (event) => {
+  const fromThisPage = event.source === window && event.origin === location.origin;
+  if (fromThisPage && event.data?.type === "et-session") send(event.data.session);
 });

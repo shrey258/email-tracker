@@ -1,5 +1,5 @@
 const CLIENT_ID = "YOUR-GOOGLE-CLIENT-ID";
-const SCOPE = "https://www.googleapis.com/auth/gmail.modify";
+const SCOPE = "https://mail.google.com/";
 const tokens = {};
 
 export async function gmailToken(account, interactive = false) {

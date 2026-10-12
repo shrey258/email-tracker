@@ -19,17 +19,19 @@ async function fetchStats(account) {
   return { at: Date.now(), byId: Object.fromEntries(mails.map((m) => [m.id, m])) };
 }
 
-async function stats({ account, id }) {
+async function cachedStats(account, wantFresh) {
   const age = cache[account] ? Date.now() - cache[account].at : Infinity;
+  if (age > 30000 || (wantFresh && age > 3000)) cache[account] = await fetchStats(account);
+  return cache[account];
+}
+
+async function stats({ account, id }) {
   const missing = !cache[account]?.byId[id];
-  if (age > 30000 || (missing && age > 3000)) cache[account] = await fetchStats(account);
-  return { mail: cache[account].byId[id] ?? null };
+  return { mail: (await cachedStats(account, missing)).byId[id] ?? null };
 }
 
 async function statsList({ account, fresh }) {
-  const age = cache[account] ? Date.now() - cache[account].at : Infinity;
-  if (age > 30000 || (fresh && age > 3000)) cache[account] = await fetchStats(account);
-  return { mails: Object.values(cache[account].byId) };
+  return { mails: Object.values((await cachedStats(account, fresh)).byId) };
 }
 
 function accountOf(session) {

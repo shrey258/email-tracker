@@ -2,25 +2,31 @@ const DASHBOARD = "https://YOUR-DASHBOARD.example";
 document.getElementById("add-account").href = `${DASHBOARD}/?add=1`;
 
 function accountsIn(all, prefix) {
-  return Object.keys(all).filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
+  return Object.keys(all).filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length));
+}
+
+function accountStatuses(all) {
+  const signedIn = accountsIn(all, "session:");
+  const others = [...new Set([...accountsIn(all, "seen:"), ...accountsIn(all, "disconnected:")])].filter((a) => !signedIn.includes(a));
+  return [...signedIn, ...others].map((account) => ({
+    account,
+    signedIn: signedIn.includes(account),
+    ready: signedIn.includes(account) && all[`gmailError:${account}`] === "",
+    disconnected: `disconnected:${account}` in all,
+  }));
 }
 
 async function render() {
-  const all = await chrome.storage.local.get(null);
-  const signedIn = accountsIn(all, "session:");
-  const seen = [...new Set([...accountsIn(all, "seen:"), ...accountsIn(all, "disconnected:")])].filter((a) => !signedIn.includes(a));
-  const disconnected = (account) => `disconnected:${account}` in all;
-  const ready = (account) => signedIn.includes(account) && all[`gmailError:${account}`] === "";
-  const accounts = [...signedIn, ...seen];
+  const statuses = accountStatuses(await chrome.storage.local.get(null));
+  const wanted = statuses.filter((s) => !s.disconnected);
+  document.getElementById("summary").textContent = summary(wanted.map((s) => s.account), wanted.filter((s) => s.ready).map((s) => s.account));
 
-  const wanted = accounts.filter((a) => !disconnected(a));
-  document.getElementById("summary").textContent = summary(wanted, wanted.filter(ready));
   const list = document.getElementById("accounts");
-  if (!accounts.length) {
+  if (!statuses.length) {
     list.replaceChildren(Object.assign(document.createElement("li"), { className: "empty", textContent: "Open Gmail, or add an account below." }));
     return;
   }
-  list.replaceChildren(...accounts.map((account) => row(account, signedIn.includes(account), ready(account), disconnected(account))));
+  list.replaceChildren(...statuses.map(row));
 }
 
 function summary(accounts, readyAccounts) {
@@ -29,13 +35,13 @@ function summary(accounts, readyAccounts) {
   return `All set. Emails you send from ${readyAccounts.join(", ")} are tracked.`;
 }
 
-function row(account, isSignedIn, isReady, isDisconnected) {
+function row({ account, signedIn, ready, disconnected }) {
   const li = document.createElement("li");
   const name = Object.assign(document.createElement("span"), { className: "account", textContent: account });
   const right = Object.assign(document.createElement("span"), { className: "right" });
-  if (isReady) right.append(state("✓ Ready", "state ready"), disconnectButton(account));
-  else if (isSignedIn) right.append(state("Signed in", "state"), connectButton(account), disconnectButton(account));
-  else right.append(state(isDisconnected ? "Disconnected" : "Not set up", "state"), signInLink(account));
+  if (ready) right.append(state("✓ Ready", "state ready"), disconnectButton(account));
+  else if (signedIn) right.append(state("Signed in", "state"), connectButton(account), disconnectButton(account));
+  else right.append(state(disconnected ? "Disconnected" : "Not set up", "state"), signInLink(account));
   li.append(name, right);
   return li;
 }
