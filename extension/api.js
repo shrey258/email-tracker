@@ -27,6 +27,7 @@ export async function api(account, path, init = {}) {
   }
   if (!res.ok) throw new Error(`server said ${res.status}`);
   const renewed = res.headers.get("X-Session");
-  if (renewed) await setSession(account, renewed);
+  // Renew only a session that's still there, so a request in flight can't sign an account back in.
+  if (renewed && (await chrome.storage.local.get(key(account)))[key(account)]) await setSession(account, renewed);
   return res.json();
 }

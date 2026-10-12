@@ -1,29 +1,30 @@
-// Rewrites a raw email (as the Gmail API returns it) so every tracking URL of ours ends in "?me".
+// Rewrites a raw email (as the Gmail API returns it) so tracking URLs of your emails end in "?me".
 // Only the HTML parts change; they're decoded, edited and saved back as base64.
 import { BASE } from "./api.js";
 
-const OURS = new RegExp(`${BASE.replace(/[.\/]/g, "\\$&")}/(?:o/[\\w-]+/[\\w-]+|c/[\\w-]+/[\\w-]+/\\d+)(?![\\w/?-])`, "g");
+// Our tracking URLs; group 1 is the email's id.
+const OURS = new RegExp(`${BASE.replace(/[.\/]/g, "\\$&")}/(?:o/([\\w-]+)/[\\w-]+|c/([\\w-]+)/[\\w-]+/\\d+)(?![\\w/?-])`, "g");
 
-// Returns the new raw email, or null if it has no tracking URLs to mark.
-export function markOwnCopy(rawBase64url) {
+// Returns the new raw email, or null if it has none of yourIds' tracking URLs left to mark.
+export function markOwnCopy(rawBase64url, yourIds) {
   const before = fromBase64url(rawBase64url);
-  const after = rewritePart(before);
+  const after = rewritePart(before, yourIds);
   return after === before ? null : toBase64url(after);
 }
 
 // A part is headers, a blank line, then a body. Multipart bodies hold more parts between boundaries.
-function rewritePart(part) {
+function rewritePart(part, yourIds) {
   const split = part.search(/\r?\n\r?\n/);
   if (split < 0) return part;
   const head = part.slice(0, split), body = part.slice(split);
   const type = header(head, "Content-Type");
   const boundary = type.match(/boundary="?([^";]+)"?/i)?.[1];
   if (/^multipart\//i.test(type) && boundary) {
-    return head + body.split(`--${boundary}`).map((p, i, all) => (i === 0 || i === all.length - 1 ? p : rewritePart(p))).join(`--${boundary}`);
+    return head + body.split(`--${boundary}`).map((p, i, all) => (i === 0 || i === all.length - 1 ? p : rewritePart(p, yourIds))).join(`--${boundary}`);
   }
   if (!/^\s*text\/html/i.test(type)) return part;
   const html = decode(body.replace(/^\r?\n\r?\n/, ""), header(head, "Content-Transfer-Encoding"));
-  const marked = html.replace(OURS, "$&?me");
+  const marked = html.replace(OURS, (url, openId, clickId) => (yourIds.has(openId ?? clickId) ? `${url}?me` : url));
   if (marked === html) return part;
   const newHead = head.replace(/^Content-Transfer-Encoding:.*(\r?\n[ \t].*)*\r?\n?/im, "").replace(/\s*$/, "");
   return `${newHead}\r\nContent-Transfer-Encoding: base64\r\n\r\n${utf8ToBase64(marked).replace(/.{76}/g, "$&\r\n")}\r\n`;

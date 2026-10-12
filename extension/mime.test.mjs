@@ -14,13 +14,15 @@ const raw = [
 ].join("\r\n");
 const b64url = (s) => Buffer.from(s, "latin1").toString("base64url");
 
-const out = Buffer.from(markOwnCopy(b64url(raw)), "base64url").toString("latin1");
+const mine = new Set([id]);
+const out = Buffer.from(markOwnCopy(b64url(raw), mine), "base64url").toString("latin1");
 const htmlPart = out.split("--000b")[2];
 const decoded = Buffer.from(htmlPart.split("\r\n\r\n")[1].replace(/\s/g, ""), "base64").toString("utf8");
 assert(decoded.includes(`/o/${id}/${sig}?me"`), "pixel marked");
 assert(decoded.includes(`/c/${id}/${sig}/1?me"`), "link marked");
 assert(decoded.includes("Héllo"), "text kept, UTF-8 intact");
 assert(out.includes("Subject: Hi") && out.includes("Hello link"), "headers and plain part untouched");
-assert.equal(markOwnCopy(b64url(out)), null, "already marked: nothing to do");
-assert.equal(markOwnCopy(b64url(raw.replace(host, "example.com").replace(host, "example.com").replace(`https:=\r\n//${host}`, "https://example.com"))), null, "not ours: nothing to do");
+assert.equal(markOwnCopy(b64url(out), mine), null, "already marked: nothing to do");
+assert.equal(markOwnCopy(b64url(raw), new Set(["someone-elses-id"])), null, "another account's email: left alone");
+assert.equal(markOwnCopy(b64url(raw.replace(host, "example.com").replace(host, "example.com").replace(`https:=\r\n//${host}`, "https://example.com")), mine), null, "not ours: nothing to do");
 console.log("mime ok");

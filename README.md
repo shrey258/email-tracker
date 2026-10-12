@@ -5,7 +5,7 @@ See when the emails you send from Gmail are opened and which links get clicked. 
 - **Opens**: a 1×1 image at the end of each email. **Clicks**: links are routed through the server, then redirect to the original.
 - **Inside Gmail**: open a sent email and a line above it says "Opened 3× · last 2 hours ago · 1 click".
 - **Dashboard**: every email, who it went to, and a timeline of opens and clicks.
-- Your own views aren't counted on any device: the extension swaps your Sent copy for one whose tracking links end in `?me`, which the server ignores. Neither is the scan Gmail runs on new mail, nor repeat views within a minute.
+- Your own views aren't counted on any device: every minute the extension swaps your copies of your tracked emails (your Sent copy, and the quote inside each reply to it) for ones whose tracking links end in `?me`, which the server ignores. A reply opened on your phone within that first minute can still count once. Neither is the scan Gmail runs on new mail, nor repeat views within a minute.
 
 ## What it can't do
 

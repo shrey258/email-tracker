@@ -14,10 +14,12 @@ async function register({ account, subject, recipients, links }) {
   return { id, base: BASE, trackSig: track_sig };
 }
 
-// ponytail: refetches the account's stats at most every 30s; add a per-email endpoint if this gets slow.
+// ponytail: fetches all of the account's stats (newest 200) and keeps them 30s; add a per-email endpoint if this gets slow.
 const cache = {};
 async function stats({ account, id }) {
-  if (!(Date.now() - cache[account]?.at < 30000))
+  const age = Date.now() - (cache[account]?.at ?? 0);
+  // Refetch when stale, or when the email isn't in it yet (sent after the last fetch), at most every 3s.
+  if (age > 30000 || (!cache[account].byId[id] && age > 3000))
     cache[account] = { at: Date.now(), byId: Object.fromEntries((await api(account, "/stats")).map((m) => [m.id, m])) };
   return { mail: cache[account].byId[id] ?? null };
 }
@@ -42,11 +44,23 @@ const handlers = {
   // A session is "<expiry>.<email>.<signature>", so it says which account it's for.
   session: ({ session }) => setSession(session.slice(session.indexOf(".") + 1, session.lastIndexOf(".")), session),
   // Only for accounts signed in to the tracker, so we never touch another mailbox.
-  ownCopies: async ({ account }) => (await isSignedIn(account) ? markOwnCopies(account) : { marked: 0 }),
+  ownCopies: async ({ account }) => ((await signedInAccounts()).includes(account) ? markOwnCopies(account) : { marked: 0 }),
   connectGmail: async ({ account }) => (await gmailToken(account, true), {}),
 };
 
-const isSignedIn = async (account) => !!account && `session:${account}` in (await chrome.storage.local.get(`session:${account}`));
+const signedInAccounts = async () => Object.keys(await chrome.storage.local.get(null)).filter((k) => k.startsWith("session:")).map((k) => k.slice(8));
+
+// Every minute, swap your copies of tracked emails in each signed-in mailbox (see own-copy.js), so a reply
+// arriving with your email quoted is fixed before you open it on your phone. The last error per account
+// is kept for the options page.
+chrome.alarms.create("own-copies", { periodInMinutes: 1 });
+chrome.alarms.onAlarm.addListener(async ({ name }) => {
+  if (name !== "own-copies") return;
+  for (const account of await signedInAccounts()) {
+    const error = await markOwnCopies(account).then(() => "", (e) => e.message);
+    await chrome.storage.local.set({ [`gmailError:${account}`]: error });
+  }
+});
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   const h = handlers[msg.type];

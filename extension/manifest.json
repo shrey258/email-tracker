@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "declarativeNetRequest",
-    "identity"
+    "identity",
+    "alarms"
   ],
   "host_permissions": [
     "https://YOUR-SERVER.example/*",
@@ -24,7 +25,6 @@
       "js": [
         "gmail.js",
         "toast.js",
-        "own-views.js",
         "send.js",
         "stats-line.js",
         "content.js"
