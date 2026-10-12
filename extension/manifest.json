@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Email Tracker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tracks opens and link clicks on emails sent from Gmail.",
   "permissions": [
     "storage",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "identity"
   ],
   "host_permissions": [
-    "https://YOUR-SERVER.example/*"
+    "https://YOUR-SERVER.example/*",
+    "https://gmail.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -22,6 +24,7 @@
       "js": [
         "gmail.js",
         "toast.js",
+        "own-views.js",
         "send.js",
         "stats-line.js",
         "content.js"

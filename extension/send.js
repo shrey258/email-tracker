@@ -58,8 +58,9 @@ async function trackedSend(found, gmailSend) {
     toast(`Not tracked: ${r.error}`);
   }
 
-  // 3. Press Gmail's real Send.
+  // 3. Press Gmail's real Send, then mark your own copy once it's in Sent.
   pressGmailSend(gmailSend);
+  if (r.ok) afterSend();
   delete root.dataset.etBusy;
 }
 

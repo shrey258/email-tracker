@@ -1,6 +1,8 @@
 // The extension's background: registers emails, fetches stats, stores sign-ins, and blocks
 // your own Gmail tabs from loading the pixel. Server calls go through api.js.
 import { BASE, api, setSession } from "./api.js";
+import { gmailToken } from "./google-auth.js";
+import { markOwnCopies } from "./own-copy.js";
 
 async function register({ account, subject, recipients, links }) {
   const id = crypto.randomUUID();
@@ -39,7 +41,12 @@ const handlers = {
   stats,
   // A session is "<expiry>.<email>.<signature>", so it says which account it's for.
   session: ({ session }) => setSession(session.slice(session.indexOf(".") + 1, session.lastIndexOf(".")), session),
+  // Only for accounts signed in to the tracker, so we never touch another mailbox.
+  ownCopies: async ({ account }) => (await isSignedIn(account) ? markOwnCopies(account) : { marked: 0 }),
+  connectGmail: async ({ account }) => (await gmailToken(account, true), {}),
 };
+
+const isSignedIn = async (account) => !!account && `session:${account}` in (await chrome.storage.local.get(`session:${account}`));
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   const h = handlers[msg.type];

@@ -31,12 +31,15 @@ check "register expired"  "$(code -X POST -H "Authorization: Bearer $(session $P
 check "register non-owner" "$(code -X POST -H "Authorization: Bearer $(session $FUT stranger@test.dev)" "$BASE/mails" -d "$(mail "$ID-5")")" 401
 check "register track sig as session" "$(code -X POST -H "Authorization: Bearer $ID.$T" "$BASE/mails" -d "$(mail "$ID-4")")" 401
 check "register bad id"   "$(code -X POST -H "Authorization: Bearer $S" "$BASE/mails" -d "$(mail "a/b")")" 400
+check "open own copy"     "$(code "$BASE/o/$ID/$T?me")" 200   # your own copy: not counted
+check "own copy not counted" "$(psql "SELECT count(*) FROM opens WHERE mail_id='$ID'")" 0
 check "open 1"            "$(code "$BASE/o/$ID/$T")" 200
 check "open again at once" "$(code "$BASE/o/$ID/$T")" 200 # within a minute: not counted
 check "open forged"       "$(code "$BASE/o/$ID/nope")" 200   # still returns the pixel, but isn't logged
 check "open Gmail scan"   "$(code -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246 Mozilla/5.0' "$BASE/o/$ID/$T")" 200 # not logged
 check "click 1"           "$(code "$BASE/c/$ID/$T/1")" 302
 check "click redirect"    "$(curl -s -o /dev/null -w '%{redirect_url}' "$BASE/c/$ID/$T/1")" "https://example.com/"
+check "click own copy"    "$(curl -s -o /dev/null -w '%{redirect_url}' "$BASE/c/$ID/$T/1?me")" "https://example.com/" # not counted
 check "click forged"      "$(code "$BASE/c/$ID/nope/1")" 404
 check "click no link"     "$(code "$BASE/c/$ID/$T/9")" 404
 

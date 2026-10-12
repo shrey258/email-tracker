@@ -11,6 +11,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// Your own copy of a sent email (in Sent) has "?me" on its tracking URLs (see extension/own-copy.js),
+// so you viewing it on any device, or clicking its links, isn't counted.
+func isOwnCopy(r *http.Request) bool { return r.URL.Query().Has("me") }
+
 // Smallest valid transparent 1x1 GIF.
 var pixel, _ = base64.StdEncoding.DecodeString("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
 
@@ -21,6 +25,8 @@ func (s *server) open(w http.ResponseWriter, r *http.Request) {
 	// Real views come through Google's image proxy ("GoogleImageProxy"), so skip only the scanner.
 	if strings.Contains(r.UserAgent(), "Edge/12.246") {
 		log.Println("open: skipped Gmail's delivery scan")
+	} else if isOwnCopy(r) {
+		log.Println("open: skipped, your own copy")
 	} else if verify(s.key, purposeTrack, id, r.PathValue("sig")) {
 		// Fails only if the id was never registered; nothing useful to tell the caller.
 		// A view within a minute of the last one isn't counted, so reloading the image can't inflate opens.
@@ -52,7 +58,9 @@ func (s *server) click(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Redirect even if logging fails: the recipient reaching the link matters more than our stat.
-	if err := insertClick(r.Context(), s.db, id, n); err != nil {
+	if isOwnCopy(r) {
+		log.Println("click: skipped, your own copy")
+	} else if err := insertClick(r.Context(), s.db, id, n); err != nil {
 		log.Println("click log:", err)
 	}
 	http.Redirect(w, r, target, http.StatusFound)
