@@ -1,65 +1,20 @@
 const API = 'https://YOUR-SERVER.example';
 const CLIENT_ID = document.querySelector('meta[name="google-client-id"]').content;
 const params = new URLSearchParams(location.search);
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
 
-const $ = (selector) => document.querySelector(selector);
-
-function el(tag, props = {}, ...children) {
-  const element = Object.assign(document.createElement(tag), props);
-  element.append(...children);
-  return element;
-}
-
-function fullDate(time) {
-  return new Date(time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
-
-function ago(time) {
-  const seconds = (new Date(time) - Date.now()) / 1000;
-  for (const [unit, size] of UNITS) {
-    if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
-  }
-  return 'just now';
-}
-
-function timeAgo(time) {
-  return el('time', { dateTime: time, title: fullDate(time), textContent: ago(time) });
-}
-
-function note(title, line) {
+function note(title, line, ...actions) {
   $('#status').hidden = false;
-  $('#status').replaceChildren(el('strong', { textContent: title }), el('span', { textContent: line }));
+  $('#status').replaceChildren(el('strong', { textContent: title }), el('span', { textContent: line }), ...actions);
 }
 
-function sessions() {
-  return JSON.parse(localStorage.getItem('sessions') ?? '{}');
-}
-
-function saveSession(email, session) {
-  localStorage.setItem('sessions', JSON.stringify({ ...sessions(), [email]: session }));
-  postMessage({ type: 'et-session', session }, location.origin);
-}
-
-function removeSession(email) {
-  const all = sessions();
-  delete all[email];
-  localStorage.setItem('sessions', JSON.stringify(all));
-}
-
-function currentAccount() {
-  const all = sessions();
-  const saved = localStorage.getItem('current');
-  return saved in all ? saved : Object.keys(all)[0];
-}
-
-function emailOf(credential) {
-  return JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email;
+function unreachable(email) {
+  const retry = el('button', { type: 'button', className: 'retry', textContent: 'Try again' });
+  retry.onclick = () => load(email);
+  note('Couldn’t reach the server', 'It may be waking up. This takes a few seconds.', retry);
 }
 
 function clearEmails() {
-  $('.summary').hidden = $('.list').hidden = true;
+  $('.mails').hidden = true;
 }
 
 function showSignIn(title, line) {
@@ -90,14 +45,14 @@ async function load(email, token = sessions()[email]) {
   $('#google-button').hidden = true;
   note('Loading…', `Fetching emails sent from ${email}.`);
   const res = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
-  if (!res) return note('Couldn’t reach the server', 'It may be waking up. Reload in a few seconds.');
+  if (!res) return unreachable(email);
   if (res.status === 401 && token === sessions()[email]) {
     removeSession(email);
     renderAccounts();
     return showSignIn('Signed out', `The session for ${email} expired. Sign in again.`);
   }
   if (res.status === 401) return showSignIn('This account isn’t allowed', `Only accounts listed in the server’s OWNER_EMAIL can sign in, and ${email} isn’t one.`);
-  if (!res.ok) return note('Couldn’t reach the server', 'It may be waking up. Reload in a few seconds.');
+  if (!res.ok) return unreachable(email);
 
   const session = res.headers.get('X-Session');
   if (session) saveSession(email, session);
@@ -105,6 +60,16 @@ async function load(email, token = sessions()[email]) {
   renderAccounts();
   showEmails(email, await res.json());
 }
+
+async function refresh() {
+  const email = currentAccount();
+  if (document.hidden || !email || $('.mails').hidden) return;
+  const res = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + sessions()[email] } }).catch(() => null);
+  if (res?.ok && email === currentAccount()) showEmails(email, await res.json());
+}
+
+document.addEventListener('visibilitychange', refresh);
+setInterval(refresh, 60000);
 
 function start() {
   renderAccounts();
@@ -130,68 +95,6 @@ $('#sign-out').onclick = () => {
   localStorage.removeItem('current');
   start();
 };
-
-function showEmails(email, mails) {
-  if (!mails.length) return note('No emails tracked yet', `Send an email from Gmail as ${email} with the extension on and it shows up here.`);
-  $('#status').hidden = true;
-  const totals = [
-    [mails.length, 'Sent'],
-    [mails.filter((mail) => mail.opens.length).length, 'Opened'],
-    [mails.filter((mail) => mail.clicks.length).length, 'Clicked'],
-  ];
-  $('.summary').replaceChildren(...totals.map(([count, label]) => el('div', {}, el('b', { textContent: count }), el('span', { textContent: label }))));
-  $('.list').replaceChildren(...mails.map(row));
-  $('.summary').hidden = $('.list').hidden = false;
-}
-
-function row(mail) {
-  return el('details', {}, rowSummary(mail), timeline(mail));
-}
-
-function rowSummary(mail) {
-  return el('summary', {},
-    el('div', { className: 'main' },
-      el('div', { className: mail.subject ? 'subject' : 'subject none', textContent: mail.subject || '(no subject)' }),
-      el('div', { className: 'to', textContent: 'To ' + (mail.recipients.join(', ') || 'unknown recipients') })),
-    openStatus(mail));
-}
-
-function openStatus(mail) {
-  const opens = mail.opens.length;
-  const label = opens ? `Opened${opens > 1 ? ` ${opens}×` : ''}` : 'Not opened';
-  const when = opens ? [timeAgo(mail.opens.at(-1))] : ['sent ', timeAgo(mail.sent_at)];
-  return el('div', { className: `status ${opens ? 'opened' : 'not-opened'}` },
-    el('div', { className: 'state' }, el('span', { className: 'mark' }, opens ? '✓✓' : '✓'), label),
-    el('div', { className: 'when' }, ...when));
-}
-
-function timeline(mail) {
-  const events = [
-    { kind: 'sent', at: mail.sent_at, what: 'Sent' },
-    ...mail.opens.map((at) => ({ kind: 'open', at, what: 'Opened' })),
-    ...mail.clicks.map((click) => ({ kind: 'click', at: click.at, what: clickLabel(click.url) })),
-  ].sort((a, b) => new Date(a.at) - new Date(b.at));
-  return el('ol', {}, ...sameMinuteMerged(events).map((event) =>
-    el('li', { className: event.kind },
-      el('span', { className: 'what' }, event.what, event.count > 1 ? ` ×${event.count}` : ''),
-      el('time', { dateTime: event.at, textContent: fullDate(event.at) }))));
-}
-
-function sameMinuteMerged(events) {
-  const rows = [];
-  for (const event of events) {
-    const last = rows.at(-1);
-    const sameMinute = last && last.kind === event.kind && fullDate(last.at) === fullDate(event.at) && last.kind !== 'click';
-    if (sameMinute) last.count++;
-    else rows.push({ ...event, count: 1 });
-  }
-  return rows;
-}
-
-function clickLabel(url) {
-  const link = el('a', { href: url, target: '_blank', rel: 'noopener', textContent: url.replace(/^https?:\/\//, '') });
-  return el('span', {}, 'Clicked ', link);
-}
 
 if (window.google?.accounts) window.onGoogleLibraryLoad();
 start();

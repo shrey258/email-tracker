@@ -66,14 +66,35 @@ function linkName(url) {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 }
 
+function placePanel(panel, line) {
+  const box = line.getBoundingClientRect();
+  const height = panel.offsetHeight;
+  const below = box.bottom + 6 + height <= innerHeight;
+  Object.assign(panel.style, {
+    top: `${below ? box.bottom + 6 : Math.max(8, box.top - 6 - height)}px`,
+    left: `${Math.max(8, Math.min(box.left, innerWidth - panel.offsetWidth - 8))}px`,
+    transformOrigin: below ? "top left" : "bottom left",
+  });
+}
+
+function showHistory(line, opens, clicks) {
+  const panel = historyPanel();
+  panel.replaceChildren(...historySections(opens, clicks));
+  placePanel(panel, line);
+  Object.assign(panel.style, { opacity: "1", transform: "scale(1)" });
+}
+
+function hideHistory() {
+  Object.assign(historyPanel().style, { opacity: "0", transform: "scale(0.97)" });
+}
+
 function attachHistory(line, opens, clicks) {
   if (!opens.length && !clicks.length) return;
-  Object.assign(line.style, { display: "inline-block", cursor: "default" });
-  line.addEventListener("mouseenter", () => {
-    const panel = historyPanel();
-    const box = line.getBoundingClientRect();
-    panel.replaceChildren(...historySections(opens, clicks));
-    Object.assign(panel.style, { top: `${box.bottom + 6}px`, left: `${box.left}px`, opacity: "1", transform: "scale(1)" });
-  });
-  line.addEventListener("mouseleave", () => Object.assign(historyPanel().style, { opacity: "0", transform: "scale(0.97)" }));
+  Object.assign(line.style, { display: "inline-block", cursor: "default", borderRadius: "4px" });
+  line.tabIndex = 0;
+  line.addEventListener("mouseenter", () => showHistory(line, opens, clicks));
+  line.addEventListener("focus", () => showHistory(line, opens, clicks));
+  line.addEventListener("mouseleave", hideHistory);
+  line.addEventListener("blur", hideHistory);
+  line.addEventListener("keydown", (event) => event.key === "Escape" && hideHistory());
 }

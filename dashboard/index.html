@@ -11,18 +11,41 @@
 </head>
 <body>
 <main>
-  <header>
-    <h1>Email tracker</h1>
+  <header class="top">
+    <span class="product">Email tracker</span>
     <div class="accounts" hidden>
       <select id="account" aria-label="Account"></select>
       <button type="button" id="sign-out">Sign out</button>
     </div>
   </header>
-  <section class="summary" hidden></section>
+  <section class="mails" hidden>
+    <h1>Sent</h1>
+    <nav class="tabs" aria-label="Show"></nav>
+    <div class="bar">
+      <input type="search" id="search" placeholder="Search subject or recipient" aria-label="Search">
+      <select id="range" aria-label="Time range">
+        <option value="all">Any time</option>
+        <option value="today">Today</option>
+        <option value="week">Past week</option>
+        <option value="month">Past month</option>
+      </select>
+      <select id="sort" aria-label="Sort by">
+        <option value="activity">Latest activity</option>
+        <option value="sent">Date sent</option>
+        <option value="reads">Most read</option>
+      </select>
+      <button type="button" id="clear" hidden>Clear</button>
+    </div>
+    <div class="list"></div>
+  </section>
   <div class="note" id="status"></div>
   <div class="google-button" id="google-button" hidden></div>
-  <section class="list" hidden></section>
 </main>
+<script src="dom.js"></script>
+<script src="time.js"></script>
+<script src="sessions.js"></script>
+<script src="mail-row.js"></script>
+<script src="mail-list.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -60,9 +60,9 @@ function signInLink(account) {
 function connectButton(account) {
   const button = Object.assign(document.createElement("button"), { textContent: "Connect Gmail" });
   button.onclick = async () => {
-    button.textContent = "Waiting for Google…";
+    Object.assign(button, { textContent: "Waiting for Google…", disabled: true });
     const r = await chrome.runtime.sendMessage({ type: "connectGmail", account });
-    if (!r.ok) Object.assign(button, { textContent: "Try again", title: r.error });
+    if (!r.ok) Object.assign(button, { textContent: "Try again", title: r.error, disabled: false });
   };
   return button;
 }
@@ -71,7 +71,7 @@ function disconnectButton(account) {
   const button = Object.assign(document.createElement("button"), { className: "quiet", textContent: "Disconnect" });
   button.title = `Stop tracking emails from ${account} in this browser and remove its Gmail permission.`;
   button.onclick = async () => {
-    button.textContent = "Disconnecting…";
+    Object.assign(button, { textContent: "Disconnecting…", disabled: true });
     await chrome.runtime.sendMessage({ type: "disconnect", account });
   };
   return button;

@@ -40,11 +40,15 @@ li { display: flex; align-items: center; justify-content: space-between; gap: 12
   transition: box-shadow 150ms ease-out, background-color 150ms ease-out, transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 @media (hover: hover) and (pointer: fine) {
-  .button:hover, button:hover { background: var(--hover); box-shadow: var(--ring-hover); }
-    }
-.button:active, button:active { transform: scale(0.96); }
+  .button:hover, button:hover:not(:disabled) { background: var(--hover); box-shadow: var(--ring-hover); }
+}
+.button:active, button:active:not(:disabled) { transform: scale(0.96); }
+button:disabled { cursor: default; color: var(--muted); }
 .button:focus-visible, button:focus-visible, .add:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 button.quiet { box-shadow: none; background: none; color: var(--muted); font-weight: 400; padding: 0 8px; }
+@media (hover: hover) and (pointer: fine) {
+  button.quiet:hover:not(:disabled) { box-shadow: none; background: var(--hover); color: var(--fg); }
+}
 .add { display: inline-flex; align-items: center; min-height: 36px; color: var(--accent); text-decoration: none; font-weight: 500; border-radius: 4px; }
 .fine { margin: 16px 4px 0; color: var(--muted); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
