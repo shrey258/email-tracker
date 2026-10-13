@@ -14,6 +14,12 @@ See when the emails you send from Gmail are opened and which links get clicked. 
 
 ## Setup
 
+**Fastest way:** paste this into your coding agent (Claude Code, Codex, Cursor…). It downloads the code and walks you through every step below.
+
+```
+Set up my email tracker: https://raw.githubusercontent.com/shrey258/email-tracker/main/SKILL.md
+```
+
 You need: a [Fly.io](https://fly.io) account, a Postgres database ([Supabase](https://supabase.com) free tier works), a [Vercel](https://vercel.com) account, and a Google Cloud project.
 
 1. **Dashboard URL.** Deploy `dashboard/` once to get its URL: `cd dashboard && vercel deploy --prod`.
@@ -21,7 +27,8 @@ You need: a [Fly.io](https://fly.io) account, a Postgres database ([Supabase](ht
 3. **Server.**
    ```sh
    cd server
-   fly launch --no-deploy          # pick an app name; this writes it into fly.toml
+   # put your app name (and nearest region) in fly.toml first
+   fly apps create your-app-name
    fly secrets set DATABASE_URL='postgres://...' \
      HMAC_KEY="$(openssl rand -base64 32)" \
      GOOGLE_CLIENT_ID='....apps.googleusercontent.com' \

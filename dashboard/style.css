@@ -32,7 +32,7 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 .accounts button { transition: color 150ms ease-out, transform 150ms cubic-bezier(0.32, 0.72, 0, 1); }
 .accounts button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 4px; }
 .summary[hidden], .list[hidden] { display: none; }
-.google-button { display: flex; justify-content: center; margin-top: -40px; padding-bottom: 64px; }
+.google-button { display: flex; justify-content: center; margin-top: -40px; padding-bottom: 64px; color-scheme: light; }
 .google-button[hidden] { display: none; }
 
 .summary { display: grid; grid-template-columns: repeat(3, 1fr); margin: 32px 0 24px; background: var(--surface); box-shadow: var(--elevation); border-radius: 12px; }
