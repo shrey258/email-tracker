@@ -35,7 +35,6 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, l := range req.Links {
-
 		if u, err := url.Parse(l); err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 			http.Error(w, "bad link: "+l, http.StatusBadRequest)
 			return

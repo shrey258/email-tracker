@@ -5,8 +5,8 @@ async function showSetupBanner() {
   if (bannerShown || !who) return;
   const seenKey = `seen:${who}`;
   if (!(seenKey in (await chrome.storage.local.get(seenKey)))) await chrome.storage.local.set({ [seenKey]: Date.now() });
-  const status = await chrome.runtime.sendMessage({ type: "setupStatus", account: who }).catch(() => null);
-  if (!status?.ok || status.disconnected || (status.signedIn && status.gmailConnected)) return;
+  const status = await chrome.runtime.sendMessage({ type: "setupStatus", account: who });
+  if (!status.ok || status.disconnected || (status.signedIn && status.gmailConnected)) return;
   bannerShown = true;
   const banner = setupBanner(who, status.signedIn);
   document.body.append(banner);

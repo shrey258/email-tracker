@@ -27,7 +27,7 @@ async function cachedStats(account, wantFresh) {
 
 async function stats({ account, id }) {
   const missing = !cache[account]?.byId[id];
-  return { mail: (await cachedStats(account, missing)).byId[id] ?? null };
+  return { mail: (await cachedStats(account, missing)).byId[id] };
 }
 
 async function statsList({ account, fresh }) {
@@ -36,11 +36,6 @@ async function statsList({ account, fresh }) {
 
 function accountOf(session) {
   return session.slice(session.indexOf(".") + 1, session.lastIndexOf("."));
-}
-
-async function ownCopies({ account }) {
-  const accounts = await signedInAccounts();
-  return accounts.includes(account) ? markOwnCopies(account) : { marked: 0 };
 }
 
 async function connectGmail({ account }) {
@@ -92,7 +87,6 @@ const handlers = {
   statsList,
   session: receiveSession,
   disconnect,
-  ownCopies,
   connectGmail,
   setupStatus,
   openSetup,

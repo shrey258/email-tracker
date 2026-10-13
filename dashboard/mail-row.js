@@ -35,23 +35,24 @@ function nearDay(time) {
   return daysAgo(time) < 2 ? dayLabel(time) : shortDate(time);
 }
 
-function readsByDay(opens) {
-  return [...Map.groupBy(opens, (time) => new Date(time).toDateString()).values()].map((day) => {
-    const span = day.length > 1 ? `${clock(day[0])} – ${clock(day.at(-1))}` : clock(day[0]);
-    return { at: day.at(-1), kind: 'open', what: [day.length > 1 ? `Read ${day.length} times` : 'Read'], when: `${nearDay(day[0])}, ${span}` };
-  });
+function when(time) {
+  return `${nearDay(time)}, ${clock(time)}`;
+}
+
+function openEntry(time) {
+  return { at: time, kind: 'open', what: ['Read'], when: when(time) };
 }
 
 function clickEntry(click) {
   const link = el('a', { href: click.url, target: '_blank', rel: 'noopener', textContent: linkText(click.url) });
-  return { at: click.at, kind: 'click', what: ['Clicked ', link], when: fullDate(click.at) };
+  return { at: click.at, kind: 'click', what: ['Clicked ', link], when: when(click.at) };
 }
 
 function mailHistory(mail) {
   const entries = [
-    { at: mail.sent_at, kind: 'sent', what: ['Sent'], when: fullDate(mail.sent_at) },
+    { at: mail.sent_at, kind: 'sent', what: ['Sent'], when: when(mail.sent_at) },
     ...mail.clicks.map(clickEntry),
-    ...readsByDay(mail.opens),
+    ...mail.opens.map(openEntry),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   return el('ol', { className: 'history' }, ...entries.map((entry) =>
     el('li', { className: entry.kind }, el('span', {}, ...entry.what), el('time', { dateTime: entry.at, textContent: entry.when }))));

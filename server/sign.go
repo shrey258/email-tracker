@@ -18,6 +18,5 @@ func sign(key []byte, purpose, id string) string {
 }
 
 func verify(key []byte, purpose, id, sig string) bool {
-
 	return hmac.Equal([]byte(sign(key, purpose, id)), []byte(sig))
 }

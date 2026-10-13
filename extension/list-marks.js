@@ -13,9 +13,9 @@ async function trackedBySubject() {
   const fresh = listCache.fresh;
   listCache.at = Date.now();
   listCache.fresh = false;
-  const result = await chrome.runtime.sendMessage({ type: "statsList", account: account(), fresh }).catch(() => null);
+  const reply = await chrome.runtime.sendMessage({ type: "statsList", account: account(), fresh });
   const bySubject = new Map();
-  for (const mail of result?.ok ? result.mails : []) {
+  for (const mail of reply.ok ? reply.mails : []) {
     const key = normalSubject(mail.subject);
     if (key && !bySubject.has(key)) bySubject.set(key, mail);
   }

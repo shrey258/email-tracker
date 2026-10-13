@@ -2,10 +2,6 @@ const DAY = 86400000;
 const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
 
-function fullDate(time) {
-  return new Date(time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
-
 function clock(time) {
   return new Date(time).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }

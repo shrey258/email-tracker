@@ -13,25 +13,25 @@ function ago(time) {
 async function showStats(img) {
   img.dataset.etSeen = "1";
   if (img.closest(".gmail_quote, blockquote")) return;
-  const id = img.src.split(`${TRACKER}/o/`)[1]?.split("/")[0];
+  const id = img.src.split(`${TRACKER}/o/`)[1].split("/")[0];
   const message = img.closest("div.a3s");
   if (!id || message.previousElementSibling?.dataset.etStats) return;
 
-  const result = await chrome.runtime.sendMessage({ type: "stats", account: account(), id }).catch((e) => ({ ok: false, error: e.message }));
-  if (result.ok && !result.mail) return;
-  message.before(statsLine(result));
+  const reply = await chrome.runtime.sendMessage({ type: "stats", account: account(), id }).catch((e) => ({ ok: false, error: e.message }));
+  if (reply.ok && !reply.mail) return;
+  message.before(statsLine(reply));
 }
 
-function statsLine(result) {
-  const opens = result.mail?.opens ?? [];
-  const clicks = result.mail?.clicks ?? [];
+function statsLine(reply) {
+  const opens = reply.mail?.opens ?? [];
+  const clicks = reply.mail?.clicks ?? [];
   const line = document.createElement("div");
   line.dataset.etStats = "1";
-  if (result.ok) {
+  if (reply.ok) {
     line.append(checkMark(opens.length > 0), summary(opens, clicks));
     attachHistory(line, opens, clicks);
   } else {
-    line.textContent = `Email Tracker: ${result.error}`;
+    line.textContent = `Email Tracker: ${reply.error}`;
   }
   Object.assign(line.style, {
     font: "12px/1.5 'Google Sans', Roboto, sans-serif",

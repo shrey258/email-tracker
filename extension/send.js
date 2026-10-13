@@ -26,15 +26,15 @@ async function trackedSend(found, gmailSend) {
 
   root.dataset.etBusy = "1";
   const links = trackableLinks(body);
-  const result = await registerEmail(root, links);
-  if (result.ok) {
-    addTracking(body, links, result);
+  const registration = await registerEmail(root, links);
+  if (registration.ok) {
+    addTracking(body, links, registration);
     toast(partial
       ? "Tracked, but couldn't read the subject and recipients. Gmail may have changed its layout."
       : "Tracked. Opens will show up here and on your dashboard.");
     refreshMarks();
   } else {
-    toast(`Not tracked: ${result.error}`);
+    toast(`Not tracked: ${registration.error}`);
   }
   pressGmailSend(gmailSend);
   delete root.dataset.etBusy;

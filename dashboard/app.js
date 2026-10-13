@@ -36,6 +36,10 @@ window.onGoogleLibraryLoad = () => {
   google.accounts.id.renderButton($('#google-button'), { size: 'large', shape: 'pill', text: 'signin_with', theme: 'filled_black' });
 };
 
+function fetchStats(token) {
+  return fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
+}
+
 function onLogin({ credential }) {
   load(emailOf(credential), credential);
 }
@@ -44,7 +48,7 @@ async function load(email, token = sessions()[email]) {
   clearEmails();
   $('#google-button').hidden = true;
   note('Loading…', `Fetching emails sent from ${email}.`);
-  const res = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
+  const res = await fetchStats(token);
   if (!res) return unreachable(email);
   if (res.status === 401 && token === sessions()[email]) {
     removeSession(email);
@@ -64,7 +68,7 @@ async function load(email, token = sessions()[email]) {
 async function refresh() {
   const email = currentAccount();
   if (document.hidden || !email || $('.mails').hidden) return;
-  const res = await fetch(API + '/stats', { headers: { Authorization: 'Bearer ' + sessions()[email] } }).catch(() => null);
+  const res = await fetchStats(sessions()[email]);
   if (res?.ok && email === currentAccount()) showEmails(email, await res.json());
 }
 
