@@ -32,11 +32,16 @@ function rewriteMultipart(body, boundary, yourIds) {
 }
 
 function rewriteHtml(head, body, yourIds) {
-  const html = decode(body.replace(/^\r?\n\r?\n/, ""), header(head, "Content-Transfer-Encoding"));
+  const decoder = decoderFor(header(head, "Content-Type"));
+  if (!decoder) return null;
+  const html = decode(body.replace(/^\r?\n\r?\n/, ""), header(head, "Content-Transfer-Encoding"), decoder);
   const marked = html.replace(TRACKING_URL, (url, openId, clickId) => (yourIds.has(openId ?? clickId) ? `${url}?me` : url));
   if (marked === html) return null;
 
-  const headWithoutEncoding = head.replace(/^Content-Transfer-Encoding:.*(\r?\n[ \t].*)*\r?\n?/im, "").trimEnd();
+  const headWithoutEncoding = head
+    .replace(/^Content-Transfer-Encoding:.*(\r?\n[ \t].*)*\r?\n?/im, "")
+    .replace(/charset="?[^";\s]+"?/i, "charset=utf-8")
+    .trimEnd();
   const base64Lines = utf8ToBase64(marked).replace(/.{76}/g, "$&\r\n");
   return `${headWithoutEncoding}\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64Lines}\r\n`;
 }
@@ -46,11 +51,19 @@ function header(head, name) {
   return unfolded.match(new RegExp(`^${name}:\\s*(.*)$`, "im"))?.[1] ?? "";
 }
 
-function decode(body, encoding) {
+function decoderFor(type) {
+  try {
+    return new TextDecoder(type.match(/charset="?([^";\s]+)/i)?.[1] ?? "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+function decode(body, encoding, decoder) {
   let bytes = body;
   if (/quoted-printable/i.test(encoding)) bytes = decodeQuotedPrintable(body);
   else if (/base64/i.test(encoding)) bytes = atob(body.replace(/\s/g, ""));
-  return new TextDecoder().decode(Uint8Array.from(bytes, (c) => c.charCodeAt(0)));
+  return decoder.decode(Uint8Array.from(bytes, (c) => c.charCodeAt(0)));
 }
 
 function decodeQuotedPrintable(body) {

@@ -3,3 +3,4 @@ e2e/
 FEATURES.md
 .claude/settings.local.json
 HANDOFF.md
+.mcp.json

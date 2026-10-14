@@ -9,7 +9,7 @@ description: Set up a private Gmail open and click tracker (github.com/shrey258/
 
 The user starts with nothing but this file. They end up with their own copy of the code, server, database, dashboard, Google client, and unpacked Chrome extension. You run every command. The user does every web console step (Supabase, Google Cloud, `chrome://extensions`), because those consoles have no reliable CLI. For each console step, give the exact link and the exact clicks, then wait for the user to say it's done (and for the value, if the step produces one).
 
-Before Step 1, tell the user in 3 lines what they're getting (opens and clicks for emails they send from Gmail, a dashboard, everything on free tiers in their own accounts) and how long it takes. It's about 45 minutes, half of it in the Google Cloud console.
+Before Step 1, tell the user in 3 lines what they're getting (opens and clicks for emails they send from Gmail, a dashboard, all in their own accounts, free tiers everywhere except Fly.io, which needs a card on file) and how long it takes. It's about 45 minutes, half of it in the Google Cloud console.
 
 Then run the check below. For a fresh start, collect these in **one** message, because later steps need them before they come up:
 - the folder for the code. Suggest `~/email-tracker`, and say it must be permanent, never `/tmp` or Downloads. Chrome loads the extension straight from that folder, so if it's wiped, tracking stops.
@@ -78,7 +78,7 @@ The app name becomes their public tracking host, so letters, digits and dashes o
 1. In `server/fly.toml`, replace `YOUR-FLY-APP` with the name and `sjc` with the region code.
 2. Run `fly orgs list`. One org → use it; several → ask which. Then run `fly apps create <name> --org <org>`. If the name is taken, ask for another and redo step 1.
 
-Always pass `--org`. Without it, `fly` stops at an interactive picker that an agent's shell can't answer. Never use `fly launch`. It rewrites `fly.toml` and can offer to provision a paid Postgres. The repo's `fly.toml` (scale to zero, 256 MB) is what keeps the server on the free allowance. The server host is `<app>.fly.dev`.
+Always pass `--org`. Without it, `fly` stops at an interactive picker that an agent's shell can't answer. Never use `fly launch`. It rewrites `fly.toml` and can offer to provision a paid Postgres. The repo's `fly.toml` (scale to zero, 256 MB) keeps the server's cost low. The server host is `<app>.fly.dev`.
 
 ## Step 2: Dashboard URL
 

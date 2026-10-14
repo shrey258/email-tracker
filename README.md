@@ -1,6 +1,6 @@
 # Email tracker
 
-A free Gmail open and click tracker that adds nothing to your email. No signature, no badge, no footer. You run your own copy on free tiers, so the data stays in your accounts.
+A Gmail open and click tracker with no signature, no badge and no footer. You run your own copy, so the data stays in your accounts. Supabase, Vercel and Google Cloud have free tiers. Fly.io has no free tier for new accounts and needs a card on file.
 
 I built it because Mailtrack charges to remove the "Sent with Mailtrack" line from every email you send.
 
@@ -12,7 +12,7 @@ I built it because Mailtrack charges to remove the "Sent with Mailtrack" line fr
 - A dashboard with every email, who it went to, and when it was opened and clicked.
 - Several Gmail accounts at once.
 
-Your own reads don't count, even on your phone. Every minute the extension swaps your copies of tracked emails (the Sent copy, and the quoted copy inside each reply) for ones whose tracking links end in `?me`, and the server ignores those. Gmail's automatic scan of new mail doesn't count either, and neither do repeat views within a minute.
+Your own reads of recent emails don't count, even on your phone. Every minute the extension swaps your copies of tracked emails (the Sent copy, and the quoted copy inside each reply) for ones whose tracking links end in `?me`, and the server ignores those. Gmail's automatic scan of new mail doesn't count either, and neither do repeat views within a minute.
 
 ## What it can't do
 
@@ -20,6 +20,8 @@ Your own reads don't count, even on your phone. Every minute the extension swaps
 - See opens in mail apps that block images. Apple Mail goes the other way and loads every image in advance, so opens from Apple Mail readers mean little.
 - Track emails sent with Schedule send. They go out untracked.
 - Ignore your own read of a reply on your phone in the minute before the swap runs. That one counts once.
+- Ignore your own reads of older emails. The swap only looks at the 20 newest messages from the last two days, and only while Chrome is running.
+- Tell a person's click from a link scanner's. Scanners like Outlook's Safe Links count as clicks.
 - Run outside Chrome and other Chromium browsers.
 
 ## Setup
