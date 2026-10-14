@@ -100,7 +100,7 @@ The deploy prints JSON with a per-deploy URL. Get the alias with `vercel inspect
 Supabase → New project (region nearest the Fly region; save the database password) → wait 2–3 minutes for setup → **Connect** (top bar) → the **Direct** tab → keep *Direct connection* → copy the URI and replace `[YOUR-PASSWORD]` in it with the real password. The user keeps this URI to themselves until Step 6; wait only for "done".
 
 - "Exceeded their free project limits" means the free plan's limit of 2 active projects per account is used up. Have them pause one they don't use, or use another Postgres (add `?sslmode=require` unless it's local).
-- Direct connection is IPv6-only, and that's fine: Fly machines reach IPv6. Never pick the transaction pooler (port 6543). The server uses pgx, and that pooler breaks prepared statements ("prepared statement already exists").
+- Direct connection is IPv6-only, which works because Fly machines reach IPv6. Never pick the transaction pooler (port 6543). The server uses pgx, and that pooler breaks prepared statements ("prepared statement already exists").
 - A password with `@ : / ? #` in it must be percent-encoded in the URI. The simplest fix is to reset it to letters and digits only.
 - The server creates its own tables on first boot. Never run `schema.sql` by hand.
 
@@ -205,8 +205,13 @@ No open after 2 minutes?
 │   service worker console (chrome://extensions → Inspect) and `fly logs -a <app>` for POST /mails
 ├── On the dashboard, no GET /o/ in `fly logs` → the recipient's client blocked images,
 │   or Google's image proxy cached the pixel; open it in a fresh client
-└── GET /o/ logged but count is 0 → it was an own view (the extension marks those with ?me,
-    which the log line doesn't show); open it from the other account, in another browser
+└── GET /o/ logged but count is 0 → read the log line right after it
+    ├── "open: skipped, your own copy" → the URL ended in ?me, so it was the user's own copy;
+    │   open it from the other account, in another browser
+    ├── "open: skipped Gmail's delivery scan" → Gmail scanning new mail, not a person;
+    │   open it in the recipient's inbox
+    └── no "skipped" line → a repeat within a minute of a counted open (those are silent),
+        or a signature made with an older HMAC_KEY; wait a minute and send a new email
 ```
 
 Setup is done when this check passes. Finish with three things, in one message:

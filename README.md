@@ -36,7 +36,7 @@ You need accounts on [Fly.io](https://fly.io), [Supabase](https://supabase.com) 
 
 To do it by hand:
 
-1. **Dashboard URL.** Deploy `dashboard/` once to get its address: `cd dashboard && vercel deploy --prod`.
+1. **Dashboard URL.** Deploy `dashboard/` once to get its address: `cd dashboard && vercel deploy --prod`. Use the production alias (`https://<project>.vercel.app`), never the per-deploy URL the command prints. The extension and the server compare this address exactly, so any other one breaks sign-in without an error.
 2. **Google sign-in.** In Google Cloud, open *Google Auth Platform*. Set up branding as *External*, add your Gmail addresses as test users under *Audience*, then go to *Clients → Create client → Web application* and add your dashboard URL as an authorized JavaScript origin. Copy the client ID.
 3. **Server.** Put your app name and nearest region in `server/fly.toml`, then:
    ```sh
@@ -47,15 +47,15 @@ To do it by hand:
      GOOGLE_CLIENT_ID='....apps.googleusercontent.com' \
      OWNER_EMAIL='you@gmail.com,your-other@gmail.com' \
      DASHBOARD_ORIGIN='https://your-dashboard.vercel.app'
-   fly deploy
+   fly deploy --ha=false
    ```
-   The server creates its tables on first boot. `OWNER_EMAIL` lists the Google accounts allowed to sign in.
+   `--ha=false` keeps it to one machine. Without it, Fly starts two and you pay for both. For `DATABASE_URL`, use Supabase's *Direct connection* URI, never the transaction pooler (port 6543), which breaks the server with "prepared statement already exists". The server creates its tables on first boot. `OWNER_EMAIL` lists the Google accounts allowed to sign in.
 4. **Your URLs.** Replace the placeholders, then deploy the dashboard again.
    - `YOUR-SERVER.example` with your Fly host (`your-app.fly.dev`) in `extension/api.js`, `extension/gmail.js`, `extension/manifest.json` and `dashboard/app.js`.
    - `YOUR-DASHBOARD.example` with your dashboard host in `extension/api.js`, `extension/setup.js` and `extension/manifest.json`.
    - `YOUR-GOOGLE-CLIENT-ID` in `dashboard/index.html` and `extension/google-auth.js`.
 5. **Gmail permission.** Enable the Gmail API in your Google Cloud project. Load the extension once (next step) to see its ID on `chrome://extensions`, then add `https://<extension-id>.chromiumapp.org/` as an authorized redirect URI on the same client.
-6. **Extension.** Go to `chrome://extensions`, turn on Developer mode, click *Load unpacked* and pick `extension/`. A setup page opens. For each Gmail account you send from, sign in on the dashboard, then click *Connect Gmail*. Google warns that the app isn't verified. It's your own app, so continue. Turn off other trackers like Mailtrack, because they rewrite the same links. The toolbar button reopens setup and shows a red "!" until it's done.
+6. **Extension.** Go to `chrome://extensions`, turn on Developer mode, click *Load unpacked* and pick `extension/`. Never move or delete that folder afterwards. Chrome derives the extension's ID from its path, so a new path means a new ID and Gmail sign-in stops matching the redirect URI. A setup page opens. For each Gmail account you send from, sign in on the dashboard, then click *Connect Gmail*. Google warns that the app isn't verified. It's your own app, so continue. Turn off other trackers like Mailtrack, because they rewrite the same links. The toolbar button reopens setup and shows a red "!" until it's done.
 
 Send an email to another address you own and open it on your phone or in another browser. The extension blocks the tracking image in every Gmail tab of the browser it runs in, so opening it there never counts. The email shows up on the dashboard right away, and the open within a minute.
 
